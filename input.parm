@@ -1,0 +1,68 @@
+#----------------------------------------------------------------------
+#                       ~~~My program~~~                           
+#                       Input Parameters                             
+#-----------------------------------------------------------------------
+#---------------------------------------------
+# Job Specification 
+#---------------------------------------------
+job = "VMC Simulation" 
+optimizing_run = "NO" 
+mode = "NEW" # ("NEW"/"APPEND")
+print_level = -2 #-2
+
+#---------------------------------------------
+# Lattice:
+#---------------------------------------------
+lattice = "SQUARE" 
+lsize1 = 8
+lsize2 = 8
+bc1 = "periodic"
+bc2 = "antiperiodic"
+
+#---------------------------------------------
+# Model:
+#---------------------------------------------
+model = "HUBBARD"
+t = 1.0
+U = 0.0
+
+#---------------------------------------------
+# Variational wavefunction
+#---------------------------------------------
+wavefunction = "DWAVE_SC"
+gutzwiller_proj = "YES"
+hole_doping = 0.0
+gfactor = 1.0 
+delta_sc = 1.0 
+#mu = -0.89 
+#mu_variational = "YES"
+
+#---------------------------------------------
+# List of observable to calculate:
+#---------------------------------------------
+Energy = "Yes"
+EnergyGradient = "No"
+Magnetization = "No"
+
+#---------------------------------------------
+# Monte Carlo parameters
+#---------------------------------------------
+rng_seed = 1  # (=0 No seed, >0 time_seed)
+measure_steps = 1000
+warmup_steps = 1000
+min_interval = 2
+max_interval = 20
+
+#---------------------------------------------
+# Optimization parameters
+#---------------------------------------------
+num_opt_samples = 10
+sr_max_iter = 500
+sr_start_tstep = 0.08
+sr_series_len = 50
+sr_fluctuation_tol = 0.35
+
+
+
+
+
