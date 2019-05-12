@@ -64,7 +64,8 @@ private:
   std::string name_;
   //bool pairing_type_{false};
   //wf_type type_;
-  unsigned num_sites_;
+  int num_sites_;
+  int num_states_;
   // BCS_state bcs_state_;
   // FS_state fermisea_;
   Matrix psi_up_;

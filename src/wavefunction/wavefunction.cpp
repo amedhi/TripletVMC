@@ -15,6 +15,7 @@ Wavefunction::Wavefunction(const lattice::LatticeGraph& graph,
   const input::Parameters& inputs)
   : num_sites_(graph.num_sites())
 {
+  num_states_ = 2*num_sites_;
   name_ = inputs.set_value("wavefunction", "NONE");
   boost::to_upper(name_);
   if (name_ == "FERMISEA") {
@@ -30,10 +31,10 @@ Wavefunction::Wavefunction(const lattice::LatticeGraph& graph,
     throw std::range_error("Wavefunction::Wavefunction: unidefined wavefunction");
   }
   // resize
-  psi_up_.resize(num_sites_,num_sites_);
+  psi_up_.resize(num_states_,num_states_);
   psi_gradient_.resize(varparms().size());
-  for (unsigned i=0; i<varparms().size(); ++i)
-    psi_gradient_[i].resize(num_sites_,num_sites_);
+  for (int i=0; i<varparms().size(); ++i)
+    psi_gradient_[i].resize(num_states_,num_states_);
 }
 
 std::string Wavefunction::signature_str(void) const

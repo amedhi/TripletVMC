@@ -21,10 +21,17 @@ int MF_Model::finalize(const lattice::LatticeGraph& graph)
 {
   Model::finalize(graph.lattice());
   dim_ = graph.lattice().num_basis_sites();
-  quadratic_block_up_.resize(dim_,dim_);
-  pairing_block_.resize(dim_,dim_);
+  dim2_ = 2*dim_;
   work.resize(dim_,dim_);
+  quadratic_block_up_.resize(dim_,dim_);
+  quadratic_block_dn_.resize(dim_,dim_);
+  quadratic_block_.resize(dim2_,dim2_);
+  pairing_block_.resize(dim2_,dim2_);
   build_unitcell_terms(graph);
+
+  quadratic_block_.setZero();
+  pairing_block_.setZero();
+
   return 0;
 }
 
@@ -42,7 +49,7 @@ void MF_Model::update_terms(void)
 void MF_Model::update_site_parameter(const std::string& pname, const double& pvalue)
 {
   Model::update_parameter(pname, pvalue);
-  for (unsigned i=0; i<usite_terms_.size(); ++i) 
+  for (int i=0; i<usite_terms_.size(); ++i) 
     usite_terms_[i].eval_coupling_constant(Model::parameters(),Model::constants());
 }
 
@@ -62,7 +69,7 @@ void MF_Model::build_unitcell_terms(const lattice::LatticeGraph& graph)
   }*/
   usite_terms_.resize(Model::num_siteterms());
   ubond_terms_.resize(Model::num_bondterms());
-  unsigned i = 0;
+  int i = 0;
   for (auto sterm=siteterms_begin(); sterm!=siteterms_end(); ++sterm) {
     usite_terms_[i].build_siteterm(*sterm, graph);
     i++;
@@ -76,77 +83,70 @@ void MF_Model::build_unitcell_terms(const lattice::LatticeGraph& graph)
 
 void MF_Model::construct_kspace_block(const Vector3d& kvec)
 {
-  work.setZero(); 
-  pairing_block_.setZero();
+  //work.setZero(); 
+  quadratic_block_up_.setZero();
+  quadratic_block_dn_.setZero();
+  //quadratic_block_.setZero();
+  //pairing_block_.setZero();
   //work2 = Matrix::Zero(dim_,dim_);
   // bond terms
   //for (const auto& term : uc_bondterms_) {
   for (const auto& term : ubond_terms_) {
-    if (term.qn_operator().is_quadratic() && term.qn_operator().spin_up()) {
-      for (unsigned i=0; i<term.num_out_bonds(); ++i) {
-        Vector3d delta = term.bond_vector(i);
-        work += term.coeff_matrix(i) * std::exp(ii()*kvec.dot(delta));
+    for (int i=0; i<term.num_out_bonds(); ++i) {
+      Vector3d delta = term.bond_vector(i);
+      work = term.coeff_matrix(i) * std::exp(ii()*kvec.dot(delta));
+      //----------------HOPPING terms--------------
+      if (term.qn_operator().is_quadratic()) {
+        if (term.qn_operator().spin_up()) {
+          quadratic_block_up_ += work;
+        }
+        if (term.qn_operator().spin_dn()) {
+          quadratic_block_dn_ += work;
+        }
       }
-    }
-    if (term.qn_operator().is_pairing()) {
-      for (unsigned i=0; i<term.num_out_bonds(); ++i) {
-        Vector3d delta = term.bond_vector(i);
-        pairing_block_ += term.coeff_matrix(i) * std::exp(ii()*kvec.dot(delta));
+      //----------------PAIRING terms--------------
+      if (term.qn_operator().id()==model::op_id::create_singlet) {
+        pairing_block_.block(0,dim_,dim_,dim_) += work;
+        pairing_block_.block(dim_,0,dim_,dim_) += -work;
+      }
+      if (term.qn_operator().id()==model::op_id::create_triplet_uu) {
+        pairing_block_.block(0,0,dim_,dim_) += work;
+      }
+      if (term.qn_operator().id()==model::op_id::create_triplet_ud) {
+        pairing_block_.block(0,dim_,dim_,dim_) += work;
+        pairing_block_.block(dim_,0,dim_,dim_) += work;
+      }
+      if (term.qn_operator().id()==model::op_id::create_triplet_dd) {
+        pairing_block_.block(dim_,dim_,dim_,dim_) += work;
       }
     }
   }
-  // add hermitian conjugate part
-  quadratic_block_up_ = work + work.adjoint();
+
+  // Final quadratic spin-UP block + SITE terms
+  work = quadratic_block_up_ + quadratic_block_up_.adjoint();
   // site terms 
-  //for (const auto& term : uc_siteterms_) {
   for (const auto& term : usite_terms_) {
-    //std::cout << " --------- here --------\n";
     if (term.qn_operator().spin_up()) {
-      quadratic_block_up_ += term.coeff_matrix();
-      //std::cout << " sterm =" << term.coeff_matrix() << "\n"; //getchar();
+      work += term.coeff_matrix();
     }
   }
+  quadratic_block_.block(0,0,dim_,dim_) = work;
+  // quadratic spin-DN block
+  work = quadratic_block_dn_ + quadratic_block_dn_.adjoint();
+  // site terms 
+  for (const auto& term : usite_terms_) {
+    if (term.qn_operator().spin_dn()) {
+      work += term.coeff_matrix();
+    }
+  }
+  quadratic_block_.block(dim_,dim_,dim_,dim_) = work;
+  //for (const auto& term : uc_siteterms_) {
   //quadratic_block_up_ += work1.adjoint();
   //pairing_block_ = work2;
   //pairing_block_ += work2.adjoint();
   // site terms
   //std::cout << "ek = " << quadratic_block_(0,0) << "\n";
 }
-
-/*
-const ComplexMatrix& MF_Model::quadratic_up_matrix(const lattice::LatticeGraph& graph) 
-{
-  if (num_bondterms() != 1)
-    throw std::logic_error("MF_Model::quadratic_up_matrix: internal error");
-  if (num_siteterms() != 1)
-    throw std::logic_error("MF_Model::quadratic_up_matrix: internal error");
-
-  work.setZero(); 
-  int n = 0;
-  // bond operator matrix elements
-  for (auto b=graph.bonds_begin(); b!=graph.bonds_end(); ++b) {
-    int site_i = graph.source(b);
-    int site_j = graph.target(b);
-    // matrix elements 
-    work(site_i, site_j) = varparms_[n].value();
-    ++n;
-  }
-  quadratic_block_up_ = work + work.adjoint();
-  // site operator matrix elements
-  n = graph.num_bonds();
-  for (unsigned i=0; i<graph.num_sites(); ++i) {
-    quadratic_block_up_(i,i) += varparms_[n].value();
-    ++n;
-  }
-  return quadratic_block_up_;
-}
-
-void MF_Model::get_pairing_varparms(ComplexMatrix& delta_k) const
-{
-  for (unsigned i=0; i<dim_; ++i)
-    delta_k(i,i) = varparms_[pair_parms_start_+i].value();
-}
-*/
 
 void MF_Model::update_unitcell_terms(void)
 {
@@ -156,7 +156,6 @@ void MF_Model::update_unitcell_terms(void)
     usite_terms_[i].eval_coupling_constant(Model::parameters(),Model::constants());
 }
 
-
 /* Write a bond term like,
  H = \sum_{Ia,Jb}c^{\dag}_{Ia} t_{Ia,Jb} c_{Jb}
  for lattices with multiple sites per unit cell as
@@ -164,7 +163,6 @@ void MF_Model::update_unitcell_terms(void)
  Assumption: 'site's in the Graph are numbered contigously. For
  sites in the unitcell, the 'sl number' is same as 'uid'.
 */
-
 void UnitcellTerm::build_bondterm(const model::HamiltonianTerm& hamterm,
   const lattice::LatticeGraph& graph)
 {

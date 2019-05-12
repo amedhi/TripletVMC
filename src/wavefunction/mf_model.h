@@ -83,7 +83,9 @@ public:
   void update_terms(void) override;
   void update_site_parameter(const std::string& pname, const double& pvalue);
   void construct_kspace_block(const Vector3d& kvec);
-  const ComplexMatrix& quadratic_spinup_block(void) const { return quadratic_block_up_; }
+  ComplexMatrix quadratic_spinup_block(void) const { return quadratic_block_up_.block(0,0,dim_,dim_); }
+  ComplexMatrix quadratic_spindn_block(void) const { return quadratic_block_dn_.block(dim_,dim_,dim_,dim_); }
+  const ComplexMatrix& quadratic_block(void) const { return quadratic_block_; }
   const ComplexMatrix& pairing_part(void) const { return pairing_block_; }
 
 private:
@@ -91,9 +93,11 @@ private:
   std::vector<UnitcellTerm> usite_terms_;
   std::vector<UnitcellTerm> ubond_terms_;
   // matrices in kspace representation
-  unsigned dim_;
+  int dim_;
+  int dim2_;
   ComplexMatrix quadratic_block_up_;
   ComplexMatrix quadratic_block_dn_;
+  ComplexMatrix quadratic_block_;
   ComplexMatrix pairing_block_;
   ComplexMatrix work; //, work2;
 

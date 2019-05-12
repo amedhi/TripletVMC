@@ -8,20 +8,13 @@
 #ifndef BCS_STATE_H
 #define BCS_STATE_H
 
-//#include <string>
-//#include <complex>
-//#include <vector>
-//#include <map>
-//#include <stdexcept>
-//#include <Eigen/Eigenvalues>
-//#include "../scheduler/task.h"
 #include "./groundstate.h"
 #include "./mf_model.h"
 #include "./matrix.h"
 
 namespace var {
 
-enum class bcs {swave, dwave, af_swave, af_dwave};
+enum class bcs {swave, dwave, pwave};
 
 class BCS_State : public GroundState
 {
@@ -41,11 +34,17 @@ private:
   bool noninteracting_mu_{true};
   double large_number_{1.0E+2};
   // matrices
+  int dim_;
+  int dim2_;
   ComplexMatrix work_;
   ComplexMatrix delta_k_;
   ComplexMatrix dphi_k_;
+  ComplexMatrix bdg_mat_;
+  ComplexMatrix uk_mat_;
+  ComplexMatrix vk_mat_;
   std::vector<ComplexMatrix> phi_k_;
   std::vector<ComplexMatrix> work_k_;
+  mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_bdg_;
 
   void get_pair_amplitudes_oneband(std::vector<ComplexMatrix>& phi_k);
   void get_pair_amplitudes_multiband(std::vector<ComplexMatrix>& phi_k);

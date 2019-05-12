@@ -16,7 +16,8 @@ enum class spin { UP, DN, UD, SIGMA, SINGLET };
 
 enum class op_id {
   ni_sigma, ni, cdagc_up, cdagc_dn, cdagc_sigma, sisj, sisj_plus, 
-  niup_nidn, cdagup_cdagdn, null
+  niup_nidn, cdagup_cdagdn, create_singlet, create_triplet_uu, 
+  create_triplet_dd, create_triplet_ud, null
 };
 
 enum class op_type { quadratic, pairing, quartic };
@@ -129,6 +130,30 @@ class pair_create : public quantum_op
 {
 public:
   pair_create() : quantum_op("pair_creation", op_id::cdagup_cdagdn, spin::SINGLET, op_type::pairing) {}
+};
+
+class create_singlet: public quantum_op
+{
+public:
+  create_singlet() : quantum_op("create_singlet", op_id::create_singlet, spin::SINGLET, op_type::pairing) {}
+};
+
+class create_triplet_uu: public quantum_op
+{
+public:
+  create_triplet_uu() : quantum_op("create_triplet_uu", op_id::create_triplet_uu, spin::UP, op_type::pairing) {}
+};
+
+class create_triplet_ud: public quantum_op
+{
+public:
+  create_triplet_ud() : quantum_op("create_triplet_ud", op_id::create_triplet_ud, spin::UD, op_type::pairing) {}
+};
+
+class create_triplet_dd: public quantum_op
+{
+public:
+  create_triplet_dd() : quantum_op("create_triplet_dd", op_id::create_triplet_dd, spin::DN, op_type::pairing) {}
 };
 
 class sisj_plus : public quantum_op

@@ -27,17 +27,18 @@ public:
   virtual void get_wf_amplitudes(Matrix& psi);
   virtual void get_wf_gradient(std::vector<Matrix>& psi_gradient); 
   const VariationalParms& varparms(void) { return varparms_; }
-  const unsigned& num_varparms(void) const { return num_varparms_; }
+  const int & num_varparms(void) const { return num_varparms_; }
   const bool& pairing_type(void) const { return pairing_type_; }
-  const unsigned& num_upspins(void) const { return num_upspins_; }
-  const unsigned& num_dnspins(void) const { return num_dnspins_; }
+  const int & num_upspins(void) const { return num_upspins_; }
+  const int & num_dnspins(void) const { return num_dnspins_; }
   const double& hole_doping(void) const { return hole_doping_; }
 protected:
-  unsigned num_sites_{0};
-  unsigned num_bonds_{0};
-  unsigned num_kpoints_{0};
-  unsigned kblock_dim_{0};
-  unsigned num_varparms_{0};
+  int num_sites_{0};
+  int num_bonds_{0};
+  int num_states_{0};
+  int num_kpoints_{0};
+  int kblock_dim_{0};
+  int num_varparms_{0};
   basis::BlochBasis blochbasis_;
   MF_Model mf_model_;
   VariationalParms varparms_;
