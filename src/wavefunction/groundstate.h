@@ -54,9 +54,9 @@ protected:
   double get_noninteracting_mu(void);
 private:
   bool pairing_type_{false};
-  unsigned num_spins_{0};
-  unsigned num_upspins_{0};
-  unsigned num_dnspins_{0};
+  int num_spins_{0};
+  int num_upspins_{0};
+  int num_dnspins_{0};
   double last_hole_doping_{2.5}; // unlikely input
   double hole_doping_{0.0};
   double band_filling_{1.0};

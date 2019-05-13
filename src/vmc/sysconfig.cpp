@@ -77,6 +77,7 @@ int SysConfig::init_config(void)
 {
   num_upspins_ = wf_.num_upspins();
   num_dnspins_ = wf_.num_dnspins();
+  num_spins_ = num_upspins_ + num_dnspins_;
   if (num_upspins_==0 && num_dnspins_==0) return -1;
   if (num_upspins_ != num_dnspins_) 
     throw std::range_error("*SysConfig::init_config: unequal UP & DN spin case not implemented");
@@ -91,25 +92,25 @@ int SysConfig::init_config(void)
   }
   BasisState::init_spins(num_upspins_, num_dnspins_);
   basis_state_.init_spins(num_upspins_, num_dnspins_);
-  psi_mat_.resize(num_upspins_, num_dnspins_);
-  psi_inv_.resize(num_dnspins_, num_upspins_);
+  psi_mat_.resize(num_spins_,num_spins_);
+  psi_inv_.resize(num_spins_,num_spins_);
 
   // try for a well condictioned amplitude matrix
-  BasisState::set_random();
+  //BasisState::set_random();
   basis_state_.set_random();
   int num_attempt = 0;
   while (true) {
-    wf_.get_amplitudes(psi_mat_,basis_state_.upspin_sites(), basis_state_.dnspin_sites());
-    //wf_.get_amplitudes(psi_mat_,upspin_sites(),dnspin_sites());
+    wf_.get_amplitudes(psi_mat_,basis_state_.up_states(), basis_state_.dn_states());
+    //std::cout << basis_state_ << "\n"; getchar();
+    //std::cout << psi_mat_ << "\n"; getchar();
     // reciprocal conditioning number
     Eigen::JacobiSVD<ComplexMatrix> svd(psi_mat_);
     // reciprocal cond. num = smallest eigenval/largest eigen val
     double rcond = svd.singularValues()(svd.singularValues().size()-1)/svd.singularValues()(0);
     if (std::isnan(rcond)) rcond = 0.0; 
-    if (rcond>1.0E-15) break;
     //std::cout << "rcondition number = "<< rcond << "\n";
+    if (rcond>1.0E-15) break;
     // try new basis state
-    BasisState::set_random();
     basis_state_.set_random();
     if (++num_attempt > 1000) {
       throw std::underflow_error("*SysConfig::init: configuration wave function ill conditioned.");
@@ -139,8 +140,8 @@ int SysConfig::set_run_parameters(void)
   }
   else {
     int num_holes = num_sites_-(num_upspins_+num_dnspins_);
-    num_uphop_moves_ = std::min(n_up, num_holes);
-    num_dnhop_moves_ = std::min(n_dn, num_holes);
+    num_uphop_moves_ = std::min(n_up,num_holes);
+    num_dnhop_moves_ = std::min(n_dn,num_holes);
     num_exchange_moves_ = std::min(n_up, n_dn);
     //num_exchange_moves_ = 4*std::min(n_up, n_dn);
   }
@@ -152,10 +153,10 @@ int SysConfig::set_run_parameters(void)
   last_accepted_moves_ = 1;
 
   // work arrays 
-  psi_row_.resize(num_dnspins_);
-  psi_col_.resize(num_upspins_);
-  inv_row_.resize(num_upspins_);
-  psi_grad_.resize(num_upspins_,num_dnspins_);
+  psi_row_.resize(num_spins_);
+  psi_col_.resize(num_spins_);
+  inv_row_.resize(num_spins_);
+  psi_grad_.resize(num_spins_,num_spins_);
   return 0;
 }
 
@@ -176,7 +177,7 @@ int SysConfig::do_upspin_hop(void)
   if (basis_state_.gen_upspin_hop()) {
     int upspin = basis_state_.which_upspin();
     int to_site = basis_state_.which_site();
-    wf_.get_amplitudes(psi_row_, to_site, basis_state_.dnspin_sites());
+    wf_.get_amplitudes(psi_row_,to_site,basis_state_.dnspin_sites());
     amplitude_t det_ratio = psi_row_.cwiseProduct(psi_inv_.col(upspin)).sum();
     if (std::abs(det_ratio) < 1.0E-12) {
       // for safety

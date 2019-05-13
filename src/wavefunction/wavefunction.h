@@ -40,15 +40,15 @@ public:
   int compute(const lattice::LatticeGraph& graph, const var::parm_vector& pvector,
     const unsigned& start_pos, const bool& psi_gradient=false);
   //int compute_gradients(const lattice::LatticeGraph& graph);
-  const unsigned& num_upspins(void) const { return groundstate_->num_upspins(); }
-  const unsigned& num_dnspins(void) const { return groundstate_->num_dnspins(); }
+  const int& num_upspins(void) const { return groundstate_->num_upspins(); }
+  const int& num_dnspins(void) const { return groundstate_->num_dnspins(); }
   const double& hole_doping(void) const { return groundstate_->hole_doping(); }
   std::string signature_str(void) const; 
-  void get_vparm_names(std::vector<std::string>& names, unsigned start_pos) const; 
-  void get_vparm_values(var::parm_vector& values, unsigned start_pos);
-  void get_vparm_vector(std::vector<double>& vparm_values, unsigned start_pos);
-  void get_vparm_lbound(var::parm_vector& lbounds, unsigned start_pos) const; 
-  void get_vparm_ubound(var::parm_vector& ubounds, unsigned start_pos) const; 
+  void get_vparm_names(std::vector<std::string>& names, int start_pos) const; 
+  void get_vparm_values(var::parm_vector& values, int start_pos);
+  void get_vparm_vector(std::vector<double>& vparm_values, int start_pos);
+  void get_vparm_lbound(var::parm_vector& lbounds, int start_pos) const; 
+  void get_vparm_ubound(var::parm_vector& ubounds, int start_pos) const; 
   void get_amplitudes(Matrix& psi, const std::vector<int>& row,  
     const std::vector<int>& col) const;
   void get_amplitudes(ColVector& psi_vec, const int& irow,  

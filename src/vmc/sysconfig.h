@@ -33,7 +33,7 @@ public:
   int build(const lattice::LatticeGraph& graph, const var::parm_vector& vparms, 
     const bool& need_psi_grad=false);
   std::string signature_str(void) const { return wf_.signature_str(); } 
-  const unsigned& num_varparms(void) const { return num_varparms_; } 
+  const int& num_varparms(void) const { return num_varparms_; } 
   const var::parm_vector& vparm_values(void);
   const std::vector<double>& vparm_vector(void); 
   const std::vector<std::string>& varp_names(void) const { return vparm_names_; }
@@ -65,14 +65,15 @@ private:
   mutable RowVector psi_col_;
   mutable RowVector inv_row_;
   mutable Matrix psi_grad_;
-  unsigned num_sites_;
-  unsigned num_upspins_;
-  unsigned num_dnspins_;
+  int num_sites_;
+  int num_upspins_;
+  int num_dnspins_;
+  int num_spins_;
 
   // variational parameters
-  unsigned num_pj_parms_{0};
-  unsigned num_wf_parms_{0};
-  unsigned num_varparms_{0};
+  int num_pj_parms_{0};
+  int num_wf_parms_{0};
+  int num_varparms_{0};
   mutable var::parm_vector vparm_values_;
   mutable std::vector<double> vparm_vector_;
   std::vector<std::string> vparm_names_;

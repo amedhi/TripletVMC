@@ -39,6 +39,8 @@ public:
     for (int i=0; i<num_dnspins_; ++i) dnspin_sites_[i] = dn_states_[i]-num_sites_;
     return dnspin_sites_; 
   }
+  const std::vector<int>& up_states(void) const { return up_states_; }
+  const std::vector<int>& dn_states(void) const { return dn_states_; } 
   void set_random(void);
   void set_custom(void);
   bool gen_upspin_hop(void);

@@ -51,7 +51,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
     mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
     mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
     cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"});
-    mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+    mf_model_.add_bondterm(name="pairing", cc, op::create_singlet());
     // variational parameters
     varparms_.add("delta_sc", defval=1.0, lb=0.0, ub=2.0);
   }
@@ -204,31 +204,47 @@ void BCS_State::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& 
         work_ += FTU_(i,k) * phi_k[k] * std::conj(FTU_(j,k));
       }
       // copy transformed block
-      //psi.block(p,q,kblock_dim_,kblock_dim_) = 
-      for (int m=0; m<kblock_dim_; ++m) {
-        for (int n=0; n<kblock_dim_; ++n) 
-          psi(p+m,q+n) = ampl_part(work_(m,n));
+      // UP-UP block
+      for (int m=0; m<dim_; ++m) {
+        for (int n=0; n<dim_; ++n) 
+          psi(p+m,q+n) = ampl_part(work_(2*m,2*n));
+      }
+      // UP-DN block
+      for (int m=0; m<dim_; ++m) {
+        for (int n=0; n<dim_; ++n) 
+          psi(num_sites_+p+m,q+n) = ampl_part(work_(2*m,2*n+1));
+      }
+      // UP-DN block
+      for (int m=0; m<dim_; ++m) {
+        for (int n=0; n<dim_; ++n) 
+          psi(p+m,num_sites_+q+n) = ampl_part(work_(2*m+1,2*n));
+      }
+      // DN-DN block
+      for (int m=0; m<dim_; ++m) {
+        for (int n=0; n<dim_; ++n) 
+          psi(num_sites_+p+m,num_sites_+q+n) = ampl_part(work_(2*m+1,2*n+1));
       }
       q += kblock_dim_;
     }
     p += kblock_dim_;
   }
-  /*
-  for (unsigned i=0; i<num_sites_; ++i) {
-    for (unsigned j=0; j<num_sites_; ++j) {
+  /* 
+  for (int i=0; i<num_states_; ++i) {
+    for (int j=0; j<num_states_; ++j) {
       std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
       getchar();
     }
-  }*/
+  }
+  getchar();*/
 }
 
 void BCS_State::get_pair_amplitudes_oneband(std::vector<ComplexMatrix>& phi_k)
 {
   // BCS pair amplitudes for one-band system 
-  bdg_mat_.setZero();
   dphi_k_.setZero();
   for (int k=0; k<num_kpoints_; ++k) {
     Vector3d kvec = blochbasis_.kvector(k);
+    //std::cout << kvec.transpose() << "\n";
     //-------------'+k block'-------------
     mf_model_.construct_kspace_block(kvec);
     es_k_up.compute(mf_model_.quadratic_block());
@@ -239,19 +255,26 @@ void BCS_State::get_pair_amplitudes_oneband(std::vector<ComplexMatrix>& phi_k)
     // pairing part in band-operator basis
     delta_k_ = es_k_up.eigenvectors().adjoint() * work_ * 
       es_minusk_up.eigenvectors().conjugate();
+    //std::cout << "delta_k = \n" << work_ << "\n"; getchar();
 
     // bdg matrix
     int n = 0;
     for (int i=0; i<dim_; ++i) {
+      bdg_mat_.setZero();
       bdg_mat_(0,0) = 0.5*es_k_up.eigenvalues()[i];
       bdg_mat_(1,1) = 0.5*es_k_up.eigenvalues()[i+dim_];
       bdg_mat_(2,2) = -0.5*es_minusk_up.eigenvalues()[i];
       bdg_mat_(3,3) = -0.5*es_minusk_up.eigenvalues()[i+dim_];
       // upper diagonal non-zero elements
-      bdg_mat_(0,2) = -delta_k_(i,i);
-      bdg_mat_(0,3) = -delta_k_(i,i+dim_);
-      bdg_mat_(1,2) = -delta_k_(i+dim_,i);
-      bdg_mat_(1,3) = -delta_k_(i+dim_,i+dim_);
+      //bdg_mat_(0,2) = -delta_k_(i,i);
+      bdg_mat_(2,0) = -std::conj(delta_k_(i,i));
+      //bdg_mat_(0,3) = -delta_k_(i,i+dim_);
+      bdg_mat_(3,0) = -std::conj(delta_k_(i,i+dim_));
+      //bdg_mat_(1,2) = -delta_k_(i+dim_,i);
+      bdg_mat_(2,1) = -std::conj(delta_k_(i+dim_,i));
+      //bdg_mat_(1,3) = -delta_k_(i+dim_,i+dim_);
+      bdg_mat_(3,1) = -std::conj(delta_k_(i+dim_,i+dim_));
+      //std::cout << "bdg_mat = \n" << bdg_mat_ << "\n"; getchar();
       // diagonalize
       es_bdg_.compute(bdg_mat_);
       /* uk & vk matrix. By definition
@@ -259,22 +282,63 @@ void BCS_State::get_pair_amplitudes_oneband(std::vector<ComplexMatrix>& phi_k)
         U^\dag = |         |
                  |vk^* uk^*|
       */
-      bdg_mat_ = es_bdg_.eigenvectors().adjoint();
-      uk_mat_ = bdg_mat_.block(0,0,2,2); 
-      vk_mat_ = -bdg_mat_.block(0,2,2,2); 
+
+      //std::cout << "U = \n" << es_bdg_.eigenvectors() << "\n"; getchar();
+      auto eigvec1 = es_bdg_.eigenvectors().col(3).conjugate();
+      auto eigvec2 = es_bdg_.eigenvectors().col(2).conjugate();
+      if (std::abs(eigvec1(0))>= std::abs(eigvec2(0))) {
+        uk_mat_(0,0) = eigvec1(0);
+        uk_mat_(0,1) = eigvec2(0);
+        uk_mat_(1,0) = eigvec1(1);
+        uk_mat_(1,1) = eigvec2(1);
+
+        vk_mat_(0,0) = -eigvec1(2);
+        vk_mat_(0,1) = -eigvec1(3);
+        vk_mat_(1,0) = -eigvec2(2);
+        vk_mat_(1,1) = -eigvec2(3);
+      }
+      else {
+        uk_mat_(0,0) = eigvec2(0);
+        uk_mat_(0,1) = eigvec1(0);
+        uk_mat_(1,0) = eigvec2(1);
+        uk_mat_(1,1) = eigvec1(1);
+
+        vk_mat_(0,0) = -eigvec2(2);
+        vk_mat_(0,1) = -eigvec2(3);
+        vk_mat_(1,0) = -eigvec1(2);
+        vk_mat_(1,1) = -eigvec1(3);
+      }
+
+      /*bdg_mat_ = es_bdg_.eigenvectors(); //.adjoint();
+      std::cout << es_bdg_.eigenvalues().transpose() << "\n"; 
+      std::cout << "U = \n" << bdg_mat_ << "\n"; getchar();
+      //uk_mat_ = bdg_mat_.block(0,0,2,2); 
+      //vk_mat_ = -bdg_mat_.block(0,2,2,2); 
+      uk_mat_(0,0) = std::conj(bdg_mat_(0,3));
+      uk_mat_(0,1) = std::conj(bdg_mat_(0,2));
+      uk_mat_(1,0) = std::conj(bdg_mat_(2,3));
+      uk_mat_(1,1) = std::conj(bdg_mat_(1,2));
+      vk_mat_(0,0) = std::conj(bdg_mat_(2,3));
+      vk_mat_(0,1) = std::conj(bdg_mat_(2,2));
+      vk_mat_(1,0) = std::conj(bdg_mat_(3,3));
+      vk_mat_(1,1) = std::conj(bdg_mat_(3,2));
+      */
+
       // Pair amplitudes 'dphi(k)' matrix.
-      dphi_k_(n,n+1) = vk_mat_(0,1);
-      dphi_k_(n+1,n) = vk_mat_(1,0);
       for (int j=0; j<2; ++j) {
         if (std::abs(uk_mat_(j,j))<1.0E-12) {
-          dphi_k_(n+j,n+j) = large_number_ * std::arg(vk_mat_(j,j));
+          dphi_k_(n+j,n) = large_number_ * std::arg(vk_mat_(j,0));
+          dphi_k_(n+j,n+1) = large_number_ * std::arg(vk_mat_(j,1));
         }
-        else dphi_k_(n+j,n+j) = vk_mat_(j,j)/uk_mat_(j,j);
+        else {
+          dphi_k_(n+j,n) = vk_mat_(j,0)/uk_mat_(j,j);
+          dphi_k_(n+j,n+1) = vk_mat_(j,1)/uk_mat_(j,j);
+        }
       }
       // offset index for the next band
       n += 2;
     }
-    //std::cout << delta_k << "\n";
+    //std::cout << "dphi_k = \n" << dphi_k_ << "\n"; getchar();
     /*
      Pair ampitudes in original 'ck' basis 
      (yes one-band system, but the following still might be needed)
@@ -329,13 +393,16 @@ void BCS_State::get_pair_amplitudes_multiband(std::vector<ComplexMatrix>& phi_k)
       /* Pair amplitudes 'dphi(k)' matrix.
          For INTRABAND pairing only, it is block diagonal.
        */
-      dphi_k_(n,n+1) = vk_mat_(0,1);
-      dphi_k_(n+1,n) = vk_mat_(1,0);
       for (int j=0; j<2; ++j) {
         if (std::abs(uk_mat_(j,j))<1.0E-12) {
-          dphi_k_(n+j,n+j) = large_number_ * std::arg(vk_mat_(j,j));
+          auto large_ampl = large_number_ * std::arg(vk_mat_(j,j));
+          dphi_k_(n+j,n) = large_ampl;
+          dphi_k_(n+j,n+1) = large_ampl;
         }
-        else dphi_k_(n+j,n+j) = vk_mat_(j,j)/uk_mat_(j,j);
+        else {
+          dphi_k_(n+j,n) = vk_mat_(j,0)/uk_mat_(j,j);
+          dphi_k_(n+j,n+1) = vk_mat_(j,1)/uk_mat_(j,j);
+        }
       }
       // offset index for the next band
       n += 2;

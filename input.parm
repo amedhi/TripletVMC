@@ -14,8 +14,8 @@ print_level = -2 #-2
 # Lattice:
 #---------------------------------------------
 lattice = "SQUARE" 
-lsize1 = 8
-lsize2 = 8
+lsize1 = 4
+lsize2 = 4
 bc1 = "periodic"
 bc2 = "antiperiodic"
 
