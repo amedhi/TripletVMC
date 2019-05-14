@@ -44,12 +44,12 @@ public:
   double accept_ratio(void);
   void reset_accept_ratio(void);
   int apply(const model::op::quantum_op& qn_op, const int& site_i) const;
-  amplitude_t apply(const model::op::quantum_op& op, const unsigned& site_i, 
-    const unsigned& site_j, const int& bc_phase) const;
+  amplitude_t apply(const model::op::quantum_op& op, const int& site_i, 
+    const int& site_j, const int& bc_phase) const;
   amplitude_t apply_bondsinglet_hop(const unsigned& idag, const unsigned& ia_dag,
     const int& bphase_i, const unsigned& j, const unsigned& ja, 
     const int& bphase_j) const;
-  int apply_niup_nidn(const unsigned& site_i) const;
+  int apply_niup_nidn(const int& site_i) const;
   void get_grad_logpsi(RealVector& grad_logpsi) const;
   const int& num_updates(void) const { return num_updates_; }
   const var::Wavefunction& wavefunc(void) const { return wf_; }
@@ -99,10 +99,8 @@ private:
   int do_upspin_hop(void);
   int do_dnspin_hop(void);
   int do_spin_exchange(void);
-  int inv_update_upspin(const int& upspin, const ColVector& psi_row, 
-    const amplitude_t& det_ratio);
-  int inv_update_dnspin(const int& dnspin, const RowVector& psi_col, 
-    const amplitude_t& det_ratio);
+  int inv_update_for_hop(const int& spin, const ColVector& psi_row, 
+    const RowVector& psi_col_, const amplitude_t& det_ratio);
   amplitude_t apply_upspin_hop(const int& i, const int& j,
     const int& bc_phase) const;
   amplitude_t apply_dnspin_hop(const int& i, const int& j,

@@ -33,6 +33,7 @@ public:
   void init(const int& num_sites, const bool& allow_dbl=true);
   void init_spins(const int& num_upspins, const int& num_dnspins);
   const ivector& state(void) const { return state_; }
+  const std::vector<int>& spin_states(void) const { return spin_states_; }
   const std::vector<int>& upspin_sites(void) const { return up_states_; }
   const std::vector<int>& dnspin_sites(void) const 
   { 
@@ -49,6 +50,8 @@ public:
   const int& which_upspin(void) const;
   const int& which_dnspin(void) const;
   int which_site(void) const; 
+  int which_spin(void) const;
+  const int& which_state(void) const;
   void commit_last_move(void);
   void undo_last_move(void) const;
   int op_ni_up(const int& site) const;
@@ -69,10 +72,12 @@ private:
   int num_states_{0};
   int num_upspins_{0};
   int num_dnspins_{0};
+  int num_spins_{0};
   int num_upholes_{0};
   int num_dnholes_{0};
   int num_dblocc_sites_{0};
   bool double_occupancy_{true};
+  std::vector<int> spin_states_;
   std::vector<int> up_states_;
   std::vector<int> dn_states_;
   std::vector<int> uphole_states_;

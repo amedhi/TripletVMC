@@ -20,6 +20,7 @@ void FockBasis::init(const int& num_sites, const bool& allow_dbl)
   spin_id_.resize(num_states_);
   spin_id_.setConstant(-1); 
   double_occupancy_ = allow_dbl;
+  spin_states_.clear();
   up_states_.clear();
   dn_states_.clear();
   uphole_states_.clear();
@@ -35,13 +36,15 @@ void FockBasis::init_spins(const int& num_upspins, const int& num_dnspins)
 {
   num_upspins_ = num_upspins;
   num_dnspins_ = num_dnspins;
+  num_spins_ = num_upspins_+num_dnspins_;
   if (num_upspins_>num_sites_ || num_dnspins_>num_sites_)
     throw std::range_error("* FockBasis::init_spins: spin number exceeds capacity");
-  if (!double_occupancy_ && (num_upspins_+num_dnspins_)>num_sites_)
+  if (!double_occupancy_ && num_spins_>num_sites_)
     throw std::range_error("* FockBasis::init_spins: spin number exceeds capacity");
   num_upholes_ = num_sites_ - num_upspins;
   num_dnholes_ = num_sites_ - num_dnspins;
   // resizing
+  spin_states_.resize(num_spins_);
   up_states_.resize(num_upspins_);
   dn_states_.resize(num_dnspins_);
   dnspin_sites_.resize(num_dnspins_);
@@ -72,6 +75,7 @@ void FockBasis::set_random(void)
     state_[state] = 1;
     spin_id_[state] = i;
     up_states_[i] = state;
+    spin_states_[i] = state;
   }
   int j=0;
   for (int i=num_upspins_; i<num_sites_; ++i) {
@@ -83,26 +87,29 @@ void FockBasis::set_random(void)
     std::vector<int> all_dn_states(num_sites_);
     for (int i=0; i<num_sites_; ++i) all_dn_states[i] = num_sites_+i;
     std::shuffle(all_dn_states.begin(),all_dn_states.end(),rng_);
+    int j = num_upspins_;
     for (int i=0; i<num_dnspins_; ++i) {
       int state = all_dn_states[i];
       state_[state] = 1;
       spin_id_[state] = i;
       dn_states_[i] = state;
+      spin_states_[j++] = state;
     }
-    int j = 0;
+    j = 0;
     for (int i=num_dnspins_; i<num_sites_; ++i) {
       dnhole_states_[j++] = all_dn_states[i];
     }
   }
   else {
-    int total_spins = num_upspins_+num_dnspins_;
     // DN spins
     int j = 0;
-    for (int i=num_upspins_; i<total_spins; ++i) {
+    for (int i=num_upspins_; i<num_spins_; ++i) {
       int state = num_sites_+all_up_states[i];
       state_[state] = 1;
       spin_id_[state] = j;
-      dn_states_[j++] = state;
+      dn_states_[j] = state;
+      spin_states_[i] = state;
+      ++j;
     }
     // DN holes
     j = 0;
@@ -110,12 +117,12 @@ void FockBasis::set_random(void)
       int state = num_sites_+all_up_states[i];
       dnhole_states_[j++] = state;
     }
-    for (int i=total_spins; i<num_sites_; ++i) {
+    for (int i=num_spins_; i<num_sites_; ++i) {
       int state = num_sites_+all_up_states[i];
       dnhole_states_[j++] = state;
     }
   }
-  // number of doublely occupied sites
+  // number of doubly occupied sites
   num_dblocc_sites_ = 0;
   if (double_occupancy_) {
     for (int i=0; i<num_sites_; ++i) {
@@ -137,6 +144,7 @@ void FockBasis::set_custom(void)
     state_[state] = 1;
     spin_id_[state] = i;
     up_states_[i] = state;
+    spin_states_[i] = state;
   }
   int j=0;
   for (int i=num_upspins_; i<num_sites_; ++i) {
@@ -148,11 +156,13 @@ void FockBasis::set_custom(void)
   for (int i=0; i<num_sites_; ++i) all_dn_states[i] = num_sites_+i;
   //std::shuffle(all_dn_states.begin(),all_dn_states.end(),rng_);
   int last_site = num_sites_-1;
+  j = num_upspins_;
   for (int i=0; i<num_dnspins_; ++i) {
     int state = all_dn_states[last_site-i];
     state_[state] = 1;
     spin_id_[state] = i;
     dn_states_[i] = state;
+    spin_states_[j++] = state;
   }
   j = 0;
   for (int i=num_dnspins_; i<num_sites_; ++i) {
@@ -194,39 +204,6 @@ bool FockBasis::gen_upspin_hop(void)
     //fr_state = up_fr_state_;
     //to_state = up_to_state_;
     return true;
-  }
-}
-
-const int& FockBasis::which_upspin(void) const
-{
-  if (proposed_move_==move_t::upspin_hop) {
-    return mv_upspin_;
-  }
-  else {
-    throw std::logic_error("FockBasis::which_upspin: no upspin move exists");
-  }
-}
-
-const int& FockBasis::which_dnspin(void) const
-{
-  if (proposed_move_==move_t::dnspin_hop) {
-    return mv_dnspin_;
-  }
-  else {
-    throw std::logic_error("FockBasis::which_dnspin: no dnspin move exists");
-  }
-}
-
-int FockBasis::which_site(void) const
-{
-  if (proposed_move_==move_t::upspin_hop) {
-    return up_to_state_;
-  }
-  else if (proposed_move_==move_t::dnspin_hop) {
-    return dn_to_state_-num_sites_;
-  }
-  else {
-    throw std::logic_error("FockBasis::which_site: no existing move");
   }
 }
 
@@ -290,6 +267,71 @@ bool FockBasis::gen_exchange_move(void)
   state_[dn_fr_state_] = 0;
   state_[dn_to_state_] = 1;
   return true;
+}
+
+const int& FockBasis::which_upspin(void) const
+{
+  if (proposed_move_==move_t::upspin_hop) {
+    return mv_upspin_;
+  }
+  else if (proposed_move_==move_t::exchange) {
+    return mv_upspin_;
+  }
+  else {
+    throw std::logic_error("FockBasis::which_upspin: no upspin move exists");
+  }
+}
+
+const int& FockBasis::which_dnspin(void) const
+{
+  if (proposed_move_==move_t::dnspin_hop) {
+    return mv_dnspin_;
+  }
+  else if (proposed_move_==move_t::exchange) {
+    return mv_dnspin_;
+  }
+  else {
+    throw std::logic_error("FockBasis::which_dnspin: no dnspin move exists");
+  }
+}
+
+int FockBasis::which_spin(void) const
+{
+  if (proposed_move_==move_t::upspin_hop) {
+    return mv_upspin_;
+  }
+  else if (proposed_move_==move_t::dnspin_hop) {
+    return num_upspins_+mv_dnspin_;
+  }
+  else {
+    throw std::logic_error("FockBasis::which_spin: no upspin move exists");
+  }
+}
+
+int FockBasis::which_site(void) const
+{
+  if (proposed_move_==move_t::upspin_hop) {
+    return up_to_state_;
+  }
+  else if (proposed_move_==move_t::dnspin_hop) {
+    return dn_to_state_-num_sites_;
+  }
+  else {
+    throw std::logic_error("FockBasis::which_site: no existing move");
+  }
+}
+
+const int& FockBasis::which_state(void) const
+{
+  if (proposed_move_==move_t::upspin_hop) {
+    return up_to_state_;
+  }
+  else if (proposed_move_==move_t::dnspin_hop) {
+    return dn_to_state_;
+  }
+  else {
+    throw std::logic_error("FockBasis::which_state: no existing move");
+  }
 }
 
 int FockBasis::op_ni_up(const int& site) const
@@ -376,7 +418,6 @@ bool FockBasis::op_cdagc_dn(const int& site_i, const int& site_j) const
   return true;
 }
 
-
 int FockBasis::op_exchange_ud(const int& site_i, const int& site_j) const
 {
   if (proposed_move_!=move_t::null) undo_last_move();
@@ -437,6 +478,7 @@ void FockBasis::commit_last_move(void)
       spin_id_[up_fr_state_] = null_id_;
       spin_id_[up_to_state_] = mv_upspin_;
       up_states_[mv_upspin_] = up_to_state_;
+      spin_states_[mv_upspin_] = up_to_state_;
       uphole_states_[mv_uphole_] = up_fr_state_;
       proposed_move_ = move_t::null;
       break;
@@ -447,6 +489,7 @@ void FockBasis::commit_last_move(void)
       spin_id_[dn_fr_state_] = null_id_;
       spin_id_[dn_to_state_] = mv_dnspin_;
       dn_states_[mv_dnspin_] = dn_to_state_;
+      spin_states_[num_upspins_+mv_dnspin_] = dn_to_state_;
       dnhole_states_[mv_dnhole_] = dn_fr_state_;
       proposed_move_ = move_t::null;
       break;
@@ -456,8 +499,10 @@ void FockBasis::commit_last_move(void)
       spin_id_[dn_fr_state_] = null_id_;
       spin_id_[dn_to_state_] = mv_dnspin_;
       up_states_[mv_upspin_] = up_to_state_;
+      spin_states_[mv_upspin_] = up_to_state_;
       uphole_states_[mv_uphole_] = up_fr_state_;
       dn_states_[mv_dnspin_] = dn_to_state_;
+      spin_states_[num_upspins_+mv_dnspin_] = dn_to_state_;
       dnhole_states_[mv_dnhole_] = dn_fr_state_;
       proposed_move_ = move_t::null;
       break;

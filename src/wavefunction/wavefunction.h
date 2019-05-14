@@ -49,8 +49,9 @@ public:
   void get_vparm_vector(std::vector<double>& vparm_values, int start_pos);
   void get_vparm_lbound(var::parm_vector& lbounds, int start_pos) const; 
   void get_vparm_ubound(var::parm_vector& ubounds, int start_pos) const; 
-  void get_amplitudes(Matrix& psi, const std::vector<int>& row,  
-    const std::vector<int>& col) const;
+  void get_amplitudes(Matrix& psi, const std::vector<int>& spin_states) const;  
+  void get_amplitudes(ColVector& psi_row, RowVector& psi_col,
+    const int& spin, const int& new_state, const std::vector<int>& spin_states) const;
   void get_amplitudes(ColVector& psi_vec, const int& irow,  
     const std::vector<int>& col) const;
   void get_amplitudes(RowVector& psi_vec, const std::vector<int>& row,

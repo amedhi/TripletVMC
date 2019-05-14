@@ -74,35 +74,30 @@ int Wavefunction::compute(const lattice::LatticeGraph& graph, const var::parm_ve
   return 0;
 }
 
-void Wavefunction::get_amplitudes(Matrix& psi, const std::vector<int>& up_states, 
-  const std::vector<int>& dn_states) const
+void Wavefunction::get_amplitudes(Matrix& psi, const std::vector<int>& spin_states) const 
 {
   // Pfafian matrix for the state
-  int i = 0;
-  for (int m=0; m<up_states.size(); ++m) {
-    int j = i;
-    for (int n=m; n<up_states.size(); ++n) {
-      psi(i,j) = psi_up_(up_states[m], up_states[n]);
+  for (int i=0; i<spin_states.size(); ++i) {
+    for (int j=i; j<spin_states.size(); ++j) {
+      psi(i,j) = psi_up_(spin_states[i], spin_states[j]);
       psi(j,i) = -psi(i,j);
-      ++j;
     }
-    for (int n=0; n<dn_states.size(); ++n) {
-      psi(i,j) = psi_up_(up_states[m], dn_states[n]);
-      psi(j,i) = -psi(i,j);
-      ++j;
-    }
-    ++i;
   }
-  for (int m=0; m<dn_states.size(); ++m) {
-    int j = i;
-    for (int n=m; n<dn_states.size(); ++n) {
-      psi(i,j) = psi_up_(dn_states[m], dn_states[n]);
-      psi(j,i) = -psi(i,j);
-      ++j;
-    }
-    ++i;
+}
+
+void Wavefunction::get_amplitudes(ColVector& psi_row, RowVector& psi_col,
+  const int& spin, const int& new_state, const std::vector<int>& spin_states) const
+{
+  for (int i=0; i<spin; ++i) {
+    psi_col(i) = psi_up_(spin_states[i],new_state);
+    psi_row(i) = -psi_col(i);
   }
-  //std::cout << psi << "\n"; getchar();
+  for (int i=spin+1; i<spin_states.size(); ++i) {
+    psi_row(i) = psi_up_(new_state,spin_states[i]);
+    psi_col(i) = -psi_row(i);
+  }
+  psi_row(spin) = 0.0;
+  psi_col(spin) = 0.0;
 }
 
 void Wavefunction::get_amplitudes(ColVector& psi_vec, const int& irow,  
