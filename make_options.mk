@@ -45,10 +45,6 @@ MKL_INCLUDE=-I/opt/intel/mkl/include/intel64/lp64
 MKL_LDFLAGS=-L/opt/intel/mkl/lib
 MKL_LIBS=-lmkl_blas95_lp64 -lmkl_lapack95_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 
-#NLOPT_INCLUDE=-I/Users/amedhi/projects/Codes/vmc++/libs/include
-#NLOPT_LDFLAGS=-L/Users/amedhi/projects/Codes/vmc++/libs/lib
-#NLOPT_LIBS=-lnlopt
-
 INCLUDE = $(BOOST_INCLUDE) #$(MKL_INCLUDE)
 ifneq ($(BOOST_INCLUDE), $(EIGEN_INCLUDE))
 INCLUDE += $(EIGEN_INCLUDE)
@@ -67,13 +63,9 @@ VMC_LIBS=$(BOOST_LIBS) #$(NLOPT_LIBS)  #$(MKL_LIBS)
 #endif
 
 #-------------------------------------------------------------
-# 4. Where to put the 'cmc' library & the includes
+# 4. Where build directory & the includes
 PREFIX=$(PROJECT_ROOT)
 BUILD_DIR=$(PREFIX)/build
 VMC_LIBDIR=$(PREFIX)/lib
 VMC_INCLUDE=$(PREFIX)/include
-#VMC_CXXFLAGS= $(VMC_OPTFLAGS) $(INCLUDE) -I$(VMC_INCLUDE)
-#VMC_LDFLAGS=$(BOOST_LDFLAGS) -L$(VMC_LIBDIR)
-#VMC_LIBS=$(BOOST_LIBS) -lvmc++
-
 #-------------------------------------------------------------
