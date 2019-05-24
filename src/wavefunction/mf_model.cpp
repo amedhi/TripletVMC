@@ -87,37 +87,45 @@ void MF_Model::construct_kspace_block(const Vector3d& kvec)
   quadratic_block_up_.setZero();
   quadratic_block_dn_.setZero();
   //quadratic_block_.setZero();
-  //pairing_block_.setZero();
+  pairing_block_.setZero();
   //work2 = Matrix::Zero(dim_,dim_);
   // bond terms
   //for (const auto& term : uc_bondterms_) {
   for (const auto& term : ubond_terms_) {
     for (int i=0; i<term.num_out_bonds(); ++i) {
       Vector3d delta = term.bond_vector(i);
-      work = term.coeff_matrix(i) * std::exp(ii()*kvec.dot(delta));
+      std::complex<double> exp_kdotr = std::exp(ii()*kvec.dot(delta));
+      work = term.coeff_matrix(i); 
       //----------------HOPPING terms--------------
       if (term.qn_operator().is_quadratic()) {
         if (term.qn_operator().spin_up()) {
-          quadratic_block_up_ += work;
+          quadratic_block_up_ += work*exp_kdotr;;
         }
         if (term.qn_operator().spin_dn()) {
-          quadratic_block_dn_ += work;
+          quadratic_block_dn_ += work*exp_kdotr;
         }
       }
       //----------------PAIRING terms--------------
+      /* In the paring term we need 'full' sum over 'delta'. 
+         And sum over two opposite bonds cancel the imaginary part
+         of the exponential factor. So only the real part is taken.
+         The constant factor of 2 is not taken as a convention.
+       */
       if (term.qn_operator().id()==model::op_id::create_singlet) {
-        pairing_block_.block(0,dim_,dim_,dim_) += work;
-        pairing_block_.block(dim_,0,dim_,dim_) += -work;
+        pairing_block_.block(0,dim_,dim_,dim_) += work*std::real(exp_kdotr);
+        pairing_block_.block(dim_,0,dim_,dim_) += -work*std::real(exp_kdotr);
+        //std::cout << work(0,0) << "\n";
+        //std::cout << pairing_block_.block(0,dim_,dim_,dim_) << "\n\n";
       }
       if (term.qn_operator().id()==model::op_id::create_triplet_uu) {
-        pairing_block_.block(0,0,dim_,dim_) += work;
+        pairing_block_.block(0,0,dim_,dim_) += work*std::real(exp_kdotr);
       }
       if (term.qn_operator().id()==model::op_id::create_triplet_ud) {
-        pairing_block_.block(0,dim_,dim_,dim_) += work;
-        pairing_block_.block(dim_,0,dim_,dim_) += work;
+        pairing_block_.block(0,dim_,dim_,dim_) += work*std::real(exp_kdotr);
+        pairing_block_.block(dim_,0,dim_,dim_) += work*std::real(exp_kdotr);
       }
       if (term.qn_operator().id()==model::op_id::create_triplet_dd) {
-        pairing_block_.block(dim_,dim_,dim_,dim_) += work;
+        pairing_block_.block(dim_,dim_,dim_,dim_) += work*std::real(exp_kdotr);
       }
     }
   }
@@ -150,9 +158,9 @@ void MF_Model::construct_kspace_block(const Vector3d& kvec)
 
 void MF_Model::update_unitcell_terms(void)
 {
-  for (unsigned i=0; i<ubond_terms_.size(); ++i) 
+  for (int i=0; i<ubond_terms_.size(); ++i) 
     ubond_terms_[i].eval_coupling_constant(Model::parameters(),Model::constants());
-  for (unsigned i=0; i<usite_terms_.size(); ++i) 
+  for (int i=0; i<usite_terms_.size(); ++i) 
     usite_terms_[i].eval_coupling_constant(Model::parameters(),Model::constants());
 }
 
@@ -170,9 +178,9 @@ void UnitcellTerm::build_bondterm(const model::HamiltonianTerm& hamterm,
   lattice::LatticeGraph::out_edge_iterator ei, ei_end;
   // get number of unique 'cell bond vectors'
   num_out_bonds_ = 0;
-  for (unsigned i=0; i<dim_; ++i) {
+  for (int i=0; i<dim_; ++i) {
     for (std::tie(ei, ei_end)=graph.out_bonds(i); ei!=ei_end; ++ei) {
-      unsigned id = graph.vector_id(ei);
+      int id = graph.vector_id(ei);
       if (id > num_out_bonds_) num_out_bonds_ = id;
     }
   }
@@ -188,18 +196,18 @@ void UnitcellTerm::build_bondterm(const model::HamiltonianTerm& hamterm,
   expr_matrices_.resize(num_out_bonds_);
   for (auto& M : expr_matrices_) {
     M.resize(dim_);
-    for (unsigned i=0; i<dim_; ++i) M[i].resize(dim_);
+    for (int i=0; i<dim_; ++i) M[i].resize(dim_);
   }
 
   // operator
   op_ = hamterm.qn_operator();
   // build the matrices (for each 'bond vector')
-  for (unsigned i=0; i<dim_; ++i) {
+  for (int i=0; i<dim_; ++i) {
     for (std::tie(ei,ei_end)=graph.out_bonds(i); ei!=ei_end; ++ei) {
-      unsigned id = graph.vector_id(ei);
-      unsigned t = graph.target(ei);
-      unsigned j = graph.site_uid(t);
-      unsigned btype = graph.bond_type(ei);
+      int id = graph.vector_id(ei);
+      auto t = graph.target(ei);
+      auto j = graph.site_uid(t);
+      int btype = graph.bond_type(ei);
       // expression
       std::string cc_expr(hamterm.coupling_expr(btype));
       boost::trim(cc_expr);
@@ -226,12 +234,12 @@ void UnitcellTerm::build_siteterm(const model::HamiltonianTerm& hamterm,
   coeff_matrices_[0].setZero();
   expr_matrices_.resize(1);
   expr_matrices_[0].resize(dim_);
-  for (unsigned i=0; i<dim_; ++i) expr_matrices_[0][i].resize(dim_);
+  for (int i=0; i<dim_; ++i) expr_matrices_[0][i].resize(dim_);
   // operator
   op_ = hamterm.qn_operator();
   // build the matrix 
-  for (unsigned i=0; i<dim_; ++i) {
-    unsigned stype = graph.site_type(i);
+  for (int i=0; i<dim_; ++i) {
+    int stype = graph.site_type(i);
     coeff_matrices_[0](i,i) = hamterm.coupling(stype);
     // expression
     std::string cc_expr(hamterm.coupling_expr(stype));
@@ -254,9 +262,9 @@ void UnitcellTerm::eval_coupling_constant(const model::ModelParams& pvals, const
   }
   for (const auto& c : cvals) vars[c.first] = c.second;
   try { 
-    for (unsigned n=0; n<num_out_bonds_; ++n) {
-      for (unsigned i=0; i<dim_; ++i) {
-        for (unsigned j=0; j<dim_; ++j) {
+    for (int n=0; n<num_out_bonds_; ++n) {
+      for (int i=0; i<dim_; ++i) {
+        for (int j=0; j<dim_; ++j) {
           std::string cc_expr(expr_matrices_[n][i][j]);
           if (cc_expr.size()>0) {
             coeff_matrices_[n](i,j) = expr.evaluate(cc_expr, vars); 

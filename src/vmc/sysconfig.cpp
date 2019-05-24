@@ -12,8 +12,7 @@ namespace vmc {
 
 SysConfig::SysConfig(const input::Parameters& inputs, 
   const lattice::LatticeGraph& graph, const model::Hamiltonian& model)
-  : BasisState(graph.num_sites(), model.double_occupancy())
-  , basis_state_(graph.num_sites(), model.double_occupancy())
+  : basis_state_(graph.num_sites(), model.double_occupancy())
   , wf_(graph, inputs)
   , pj_(inputs)
   , num_sites_(graph.num_sites())
@@ -83,20 +82,18 @@ int SysConfig::init_config(void)
     throw std::range_error("*SysConfig::init_config: unequal UP & DN spin case not implemented");
   // small 'gfactor' caution
   bool tmp_restriction = false;
-  bool original_state = BasisState::double_occupancy();
+  bool original_state = basis_state_.double_occupancy();
   if (pj_.have_gutzwiller()) {
     if (pj_.gw_factor()<gfactor_cutoff()) {
-      BasisState::allow_double_occupancy(false);
-      tmp_restriction = true;
+      //BasisState::allow_double_occupancy(false);
+      //tmp_restriction = true;
     }
   }
-  BasisState::init_spins(num_upspins_, num_dnspins_);
   basis_state_.init_spins(num_upspins_, num_dnspins_);
   psi_mat_.resize(num_spins_,num_spins_);
   psi_inv_.resize(num_spins_,num_spins_);
 
   // try for a well condictioned amplitude matrix
-  //BasisState::set_random();
   basis_state_.set_random();
   int num_attempt = 0;
   while (true) {
@@ -116,7 +113,7 @@ int SysConfig::init_config(void)
       throw std::underflow_error("*SysConfig::init: configuration wave function ill conditioned.");
     }
   }
-  if (tmp_restriction) allow_double_occupancy(original_state);
+  //if (tmp_restriction) allow_double_occupancy(original_state);
 
   // amplitude matrix invers
   psi_inv_ = psi_mat_.inverse();
@@ -132,7 +129,7 @@ int SysConfig::set_run_parameters(void)
   // number of moves per mcstep
   int n_up = static_cast<int>(num_upspins_);
   int n_dn = static_cast<int>(num_dnspins_);
-  if (double_occupancy()) {
+  if (basis_state_.double_occupancy()) {
     num_uphop_moves_ = num_upspins_;
     num_dnhop_moves_ = num_dnspins_;
     num_exchange_moves_ = std::min(n_up, n_dn);
@@ -162,6 +159,9 @@ int SysConfig::set_run_parameters(void)
 
 int SysConfig::update_state(void)
 {
+  //std::cout << "SysConfig::update_state: all update skipped\n";
+  //return 0;
+
   for (int n=0; n<num_uphop_moves_; ++n) do_upspin_hop();
   for (int n=0; n<num_dnhop_moves_; ++n) do_dnspin_hop();
   //for (int n=0; n<num_exchange_moves_; ++n) do_spin_exchange();

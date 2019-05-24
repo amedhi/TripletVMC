@@ -42,6 +42,7 @@ public:
   }
   const std::vector<int>& up_states(void) const { return up_states_; }
   const std::vector<int>& dn_states(void) const { return dn_states_; } 
+  const bool& double_occupancy(void) const { return double_occupancy_; }
   void set_random(void);
   void set_custom(void);
   bool gen_upspin_hop(void);
