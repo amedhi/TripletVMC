@@ -83,9 +83,9 @@ public:
   void update_terms(void) override;
   void update_site_parameter(const std::string& pname, const double& pvalue);
   void construct_kspace_block(const Vector3d& kvec);
-  ComplexMatrix quadratic_spinup_block(void) const { return quadratic_block_up_.block(0,0,dim_,dim_); }
-  ComplexMatrix quadratic_spindn_block(void) const { return quadratic_block_dn_.block(dim_,dim_,dim_,dim_); }
-  const ComplexMatrix& quadratic_block(void) const { return quadratic_block_; }
+  ComplexMatrix quadratic_block_up(void) const { return quadratic_block_.block(0,0,dim_,dim_); }
+  ComplexMatrix quadratic_block_dn(void) const { return quadratic_block_.block(dim_,dim_,dim_,dim_); }
+  const ComplexMatrix& quadratic_part(void) const { return quadratic_block_; }
   const ComplexMatrix& pairing_part(void) const { return pairing_block_; }
 
 private:
@@ -99,7 +99,8 @@ private:
   ComplexMatrix quadratic_block_dn_;
   ComplexMatrix quadratic_block_;
   ComplexMatrix pairing_block_;
-  ComplexMatrix work; //, work2;
+  ComplexMatrix work_; 
+  ComplexMatrix work2_; 
 
   void build_unitcell_terms(const lattice::LatticeGraph& graph);
   void update_unitcell_terms(void);

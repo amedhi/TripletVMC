@@ -43,7 +43,7 @@ void GroundState::set_particle_num(const input::Parameters& inputs)
   if (pairing_type_) {
     int n = static_cast<int>(std::round(0.5*band_filling_*num_sites));
     if (n<0 || n>num_sites) throw std::range_error("Wavefunction:: hole doping out-of-range");
-    num_upspins_ = static_cast<unsigned>(n);
+    num_upspins_ = n;
     num_dnspins_ = num_upspins_;
     num_spins_ = num_upspins_ + num_dnspins_;
     band_filling_ = static_cast<double>(2*n)/num_sites;
@@ -51,7 +51,7 @@ void GroundState::set_particle_num(const input::Parameters& inputs)
   else{
     int n = static_cast<int>(std::round(band_filling_*num_sites));
     if (n<0 || n>2*num_sites) throw std::range_error("Wavefunction:: hole doping out-of-range");
-    num_spins_ = static_cast<unsigned>(n);
+    num_spins_ = n;
     num_dnspins_ = num_spins_/2;
     num_upspins_ = num_spins_ - num_dnspins_;
     band_filling_ = static_cast<double>(n)/num_sites;
@@ -62,12 +62,13 @@ void GroundState::set_particle_num(const input::Parameters& inputs)
 double GroundState::get_noninteracting_mu(void)
 {
   std::vector<double> ek;
-  for (unsigned k=0; k<num_kpoints_; ++k) {
+  int dim2 = 2*kblock_dim_;
+  for (int k=0; k<num_kpoints_; ++k) {
     Vector3d kvec = blochbasis_.kvector(k);
     mf_model_.construct_kspace_block(kvec);
-    es_k_up.compute(mf_model_.quadratic_spinup_block(), Eigen::EigenvaluesOnly);
+    es_k_up.compute(mf_model_.quadratic_part(), Eigen::EigenvaluesOnly);
     ek.insert(ek.end(),es_k_up.eigenvalues().data(),
-      es_k_up.eigenvalues().data()+kblock_dim_);
+      es_k_up.eigenvalues().data()+dim2);
   }
   std::sort(ek.begin(),ek.end());
   //for (const auto& e : ek) std::cout << e << "\n";
@@ -75,12 +76,12 @@ double GroundState::get_noninteracting_mu(void)
   //for (unsigned i=0; i<num_upspins_; ++i) e += ek[i];
   //std::cout << "energy = " << 2*e/num_sites_ << "\n";
   //std::cout << "upspins = " << num_upspins_ << "\n";
-  if (num_upspins_ < num_sites_) {
+  if (num_spins_ < 2*num_sites_) {
     //std::cout << 0.5*(ek[num_upspins_-1]+ek[num_upspins_]) << "\n";
-    return 0.5*(ek[num_upspins_-1]+ek[num_upspins_]);
+    return 0.5*(ek[num_spins_-1]+ek[num_spins_]);
   }
   else
-    return ek[num_upspins_-1];
+    return ek[num_spins_-1];
 }
 
 void GroundState::set_ft_matrix(const lattice::LatticeGraph& graph)

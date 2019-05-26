@@ -45,6 +45,7 @@ public:
   const bool& double_occupancy(void) const { return double_occupancy_; }
   void set_random(void);
   void set_custom(void);
+  bool gen_spin_hop(void);
   bool gen_upspin_hop(void);
   bool gen_dnspin_hop(void);
   bool gen_exchange_move(void);
@@ -89,6 +90,7 @@ private:
   mutable move_t proposed_move_;
   mutable int dblocc_increament_{0};
   //move_type accepted_move;
+  mutable int mv_spin_;
   mutable int mv_upspin_;
   mutable int mv_uphole_;
   mutable int up_fr_state_;

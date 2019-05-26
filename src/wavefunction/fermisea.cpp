@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-03-01 23:05:46
+* @Last Modified time: 2019-05-24 22:45:34
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -87,9 +87,9 @@ void Fermisea::get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k)
     int m = kshells_up_[i].nmax+1;
     Vector3d kvec = blochbasis_.kvector(k);
     mf_model_.construct_kspace_block(kvec);
-    es_k_up.compute(mf_model_.quadratic_spinup_block());
+    es_k_up.compute(mf_model_.quadratic_block_up());
     mf_model_.construct_kspace_block(-kvec);
-    es_minusk_up.compute(mf_model_.quadratic_spinup_block());
+    es_minusk_up.compute(mf_model_.quadratic_block_up());
     phi_k[k] = es_k_up.eigenvectors().block(0,0,kblock_dim_,m)
       		 * es_minusk_up.eigenvectors().conjugate().block(0,0,m,kblock_dim_);
     //std::cout << kvec.transpose() << "\n"; 
@@ -145,7 +145,7 @@ void Fermisea::construct_groundstate(void)
     for (int k=0; k<num_kpoints_; ++k) {
       Vector3d kvec = blochbasis_.kvector(k);
       mf_model_.construct_kspace_block(kvec);
-      es_k_up.compute(mf_model_.quadratic_spinup_block(), Eigen::EigenvaluesOnly);
+      es_k_up.compute(mf_model_.quadratic_block_up(), Eigen::EigenvaluesOnly);
       ek.insert(ek.end(),es_k_up.eigenvalues().data(),
         es_k_up.eigenvalues().data()+kblock_dim_);
       //std::cout << kvec.transpose() << " " << es_k_up_.eigenvalues() << "\n"; getchar();

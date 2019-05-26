@@ -22,7 +22,8 @@ int MF_Model::finalize(const lattice::LatticeGraph& graph)
   Model::finalize(graph.lattice());
   dim_ = graph.lattice().num_basis_sites();
   dim2_ = 2*dim_;
-  work.resize(dim_,dim_);
+  work_.resize(dim_,dim_);
+  work2_.resize(dim_,dim_);
   quadratic_block_up_.resize(dim_,dim_);
   quadratic_block_dn_.resize(dim_,dim_);
   quadratic_block_.resize(dim2_,dim2_);
@@ -31,7 +32,6 @@ int MF_Model::finalize(const lattice::LatticeGraph& graph)
 
   quadratic_block_.setZero();
   pairing_block_.setZero();
-
   return 0;
 }
 
@@ -93,61 +93,85 @@ void MF_Model::construct_kspace_block(const Vector3d& kvec)
   //for (const auto& term : uc_bondterms_) {
   for (const auto& term : ubond_terms_) {
     for (int i=0; i<term.num_out_bonds(); ++i) {
-      Vector3d delta = term.bond_vector(i);
-      std::complex<double> exp_kdotr = std::exp(ii()*kvec.dot(delta));
-      work = term.coeff_matrix(i); 
       //----------------HOPPING terms--------------
+      Vector3d delta = term.bond_vector(i);
+      work_ = term.coeff_matrix(i)*std::exp(ii()*kvec.dot(delta));
       if (term.qn_operator().is_quadratic()) {
         if (term.qn_operator().spin_up()) {
-          quadratic_block_up_ += work*exp_kdotr;;
+          quadratic_block_up_ += work_;
         }
         if (term.qn_operator().spin_dn()) {
-          quadratic_block_dn_ += work*exp_kdotr;
+          quadratic_block_dn_ += work_;
         }
       }
-      //----------------PAIRING terms--------------
-      /* In the paring term we need 'full' sum over 'delta'. 
-         And sum over two opposite bonds cancel the imaginary part
-         of the exponential factor. So only the real part is taken.
-         The constant factor of 2 is not taken as a convention.
-       */
-      if (term.qn_operator().id()==model::op_id::create_singlet) {
-        pairing_block_.block(0,dim_,dim_,dim_) += work*std::real(exp_kdotr);
-        pairing_block_.block(dim_,0,dim_,dim_) += -work*std::real(exp_kdotr);
-        //std::cout << work(0,0) << "\n";
-        //std::cout << pairing_block_.block(0,dim_,dim_,dim_) << "\n\n";
-      }
-      if (term.qn_operator().id()==model::op_id::create_triplet_uu) {
-        pairing_block_.block(0,0,dim_,dim_) += work*std::real(exp_kdotr);
-      }
-      if (term.qn_operator().id()==model::op_id::create_triplet_ud) {
-        pairing_block_.block(0,dim_,dim_,dim_) += work*std::real(exp_kdotr);
-        pairing_block_.block(dim_,0,dim_,dim_) += work*std::real(exp_kdotr);
-      }
-      if (term.qn_operator().id()==model::op_id::create_triplet_dd) {
-        pairing_block_.block(dim_,dim_,dim_,dim_) += work*std::real(exp_kdotr);
+
+      if (term.qn_operator().is_pairing()) {
+        //----------------PAIRING terms--------------
+        /* 
+          In the paring term we need 'full' sum over 'delta'. 
+          And sum over two opposite bonds cancel the imaginary part
+          of the exponential factor. So the adjoint part.
+          The constant factor of 2 is not taken as a convention.
+        */
+        work2_ = 0.5*(work_+work_.adjoint());
+        /*
+          The quantum number ordering scheme is: band index varies
+          first and them spin index.  
+        */
+        if (term.qn_operator().id()==model::op_id::create_singlet) {
+          for (int m=0; m<dim_; ++m) {
+            for (int n=0; n<dim_; ++n) {
+              pairing_block_(m,dim_+n) += work2_(m,n);
+              pairing_block_(dim_+m,n) += -work2_(m,n);
+            }
+          }
+          //pairing_block_.block(0,dim_,dim_,dim_) += term.coeff_matrix(i)*std::cos(kvec.dot(delta)); 
+          //pairing_block_.block(dim_,0,dim_,dim_) += -term.coeff_matrix(i)*std::cos(kvec.dot(delta));
+          //std::cout << "delta = " << delta.transpose() << "\n";
+          //std::cout << "work = \n" << work << "\n";
+          //std::cout << "delta_k = \n" << pairing_block_.block(0,dim_,dim_,dim_) << "\n\n";
+          //getchar();
+        }
+        if (term.qn_operator().id()==model::op_id::create_triplet_uu) {
+          //pairing_block_.block(0,0,dim_,dim_) += work_;
+          pairing_block_.block(0,0,dim_,dim_) += work2_;
+        }
+        if (term.qn_operator().id()==model::op_id::create_triplet_ud) {
+          //pairing_block_.block(0,dim_,dim_,dim_) += work_;
+          //pairing_block_.block(dim_,0,dim_,dim_) += work_;
+          for (int i=0; i<dim_; ++i) {
+            for (int j=0; j<dim_; ++j) {
+              pairing_block_(i,dim_+j) += work2_(i,j);
+              pairing_block_(i+dim_,j) += work2_(i,j);
+            }
+          }
+        }
+        if (term.qn_operator().id()==model::op_id::create_triplet_dd) {
+          //pairing_block_.block(dim_,dim_,dim_,dim_) += work_;
+          pairing_block_.block(dim_,dim_,dim_,dim_) += work2_;
+        }
       }
     }
   }
 
   // Final quadratic spin-UP block + SITE terms
-  work = quadratic_block_up_ + quadratic_block_up_.adjoint();
+  work_ = quadratic_block_up_ + quadratic_block_up_.adjoint();
   // site terms 
   for (const auto& term : usite_terms_) {
     if (term.qn_operator().spin_up()) {
-      work += term.coeff_matrix();
+      work_ += term.coeff_matrix();
     }
   }
-  quadratic_block_.block(0,0,dim_,dim_) = work;
+  quadratic_block_.block(0,0,dim_,dim_) = work_;
   // quadratic spin-DN block
-  work = quadratic_block_dn_ + quadratic_block_dn_.adjoint();
+  work_ = quadratic_block_dn_ + quadratic_block_dn_.adjoint();
   // site terms 
   for (const auto& term : usite_terms_) {
     if (term.qn_operator().spin_dn()) {
-      work += term.coeff_matrix();
+      work_ += term.coeff_matrix();
     }
   }
-  quadratic_block_.block(dim_,dim_,dim_,dim_) = work;
+  quadratic_block_.block(dim_,dim_,dim_,dim_) = work_;
   //for (const auto& term : uc_siteterms_) {
   //quadratic_block_up_ += work1.adjoint();
   //pairing_block_ = work2;

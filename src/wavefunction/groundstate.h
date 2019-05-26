@@ -46,7 +46,9 @@ protected:
   ComplexMatrix FTU_;
   // solvers
   mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_up;
+  mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_dn;
   mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_minusk_up;
+  mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_minusk_dn;
 
   void set_pairing_type(const bool& pairing_type) { pairing_type_=pairing_type; }
   void set_particle_num(const input::Parameters& inputs);

@@ -37,6 +37,7 @@ private:
   int dim_;
   int dim2_;
   ComplexMatrix work_;
+  ComplexMatrix Uk_;
   ComplexMatrix delta_k_;
   ComplexMatrix dphi_k_;
   ComplexMatrix bdg_mat_;

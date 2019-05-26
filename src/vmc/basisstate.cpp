@@ -179,6 +179,17 @@ void FockBasis::set_custom(void)
   }
 }
 
+bool FockBasis::gen_spin_hop(void)
+{
+  if (proposed_move_!=move_t::null) undo_last_move();
+  if ((num_upholes_==0 && num_dnholes_==0) || num_spins_==0) {
+    proposed_move_ = move_t::null;
+    return false;
+  }
+  //if (rng_.random_real()<0.5) mv_upspin_ = rng_.random_upspin();
+
+}
+
 bool FockBasis::gen_upspin_hop(void)
 {
   if (proposed_move_!=move_t::null) undo_last_move();
