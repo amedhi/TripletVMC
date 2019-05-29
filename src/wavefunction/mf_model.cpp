@@ -108,10 +108,10 @@ void MF_Model::construct_kspace_block(const Vector3d& kvec)
       if (term.qn_operator().is_pairing()) {
         //----------------PAIRING terms--------------
         /* 
-          In the paring term we need 'full' sum over 'delta'. 
-          And sum over two opposite bonds cancel the imaginary part
-          of the exponential factor. So the adjoint part.
-          The constant factor of 2 is not taken as a convention.
+          In the paring term, sum over 'delta' should include all 
+          the nearest neighbours, which is effectively obtained
+          by adding the 'adjoint' term. The factor of 0.5 is taken
+          as a convention.
         */
         work2_ = 0.5*(work_+work_.adjoint());
         /*

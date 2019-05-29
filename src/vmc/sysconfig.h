@@ -22,7 +22,7 @@ namespace vmc {
 constexpr double dratio_cutoff(void) { return 1.0E-8; } 
 constexpr double gfactor_cutoff(void) { return 1.0E-8; } 
 
-class SysConfig : public BasisState
+class SysConfig 
 {
 public:
   SysConfig(const input::Parameters& parms, const lattice::LatticeGraph& graph, 
@@ -32,6 +32,7 @@ public:
     const bool& with_gradient=false);
   int build(const lattice::LatticeGraph& graph, const var::parm_vector& vparms, 
     const bool& need_psi_grad=false);
+  RandomGenerator& rng(void) const { return basis_state_.rng(); }
   std::string signature_str(void) const { return wf_.signature_str(); } 
   const int& num_varparms(void) const { return num_varparms_; } 
   const var::parm_vector& vparm_values(void);
@@ -96,6 +97,7 @@ private:
   // helper methods
   int init_config(void);
   int set_run_parameters(void);
+  int do_spin_hop(void);
   int do_upspin_hop(void);
   int do_dnspin_hop(void);
   int do_spin_exchange(void);

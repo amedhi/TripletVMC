@@ -130,15 +130,15 @@ int SysConfig::set_run_parameters(void)
   int n_up = static_cast<int>(num_upspins_);
   int n_dn = static_cast<int>(num_dnspins_);
   if (basis_state_.double_occupancy()) {
-    num_uphop_moves_ = num_upspins_;
-    num_dnhop_moves_ = num_dnspins_;
+    num_uphop_moves_ = num_spins_;
+    num_dnhop_moves_ = 0; //num_dnspins_;
     num_exchange_moves_ = std::min(n_up, n_dn);
     //num_exchange_moves_ = 2*std::min(n_up, n_dn);
   }
   else {
     int num_holes = num_sites_-(num_upspins_+num_dnspins_);
     num_uphop_moves_ = std::min(n_up,num_holes);
-    num_dnhop_moves_ = std::min(n_dn,num_holes);
+    num_dnhop_moves_ = 0; // std::min(n_dn,num_holes);
     num_exchange_moves_ = std::min(n_up, n_dn);
     //num_exchange_moves_ = 4*std::min(n_up, n_dn);
   }
@@ -162,8 +162,8 @@ int SysConfig::update_state(void)
   //std::cout << "SysConfig::update_state: all update skipped\n";
   //return 0;
 
-  for (int n=0; n<num_uphop_moves_; ++n) do_upspin_hop();
-  for (int n=0; n<num_dnhop_moves_; ++n) do_dnspin_hop();
+  for (int n=0; n<num_uphop_moves_; ++n) do_spin_hop();
+  //for (int n=0; n<num_dnhop_moves_; ++n) do_dnspin_hop();
   //for (int n=0; n<num_exchange_moves_; ++n) do_spin_exchange();
   num_updates_++;
   if (num_updates_ % refresh_cycle_ == 0) {
@@ -172,9 +172,9 @@ int SysConfig::update_state(void)
   return 0;
 }
 
-int SysConfig::do_upspin_hop(void)
+int SysConfig::do_spin_hop(void)
 {
-  if (basis_state_.gen_upspin_hop()) {
+  if (basis_state_.gen_spin_hop()) {
     int spin = basis_state_.which_spin();
     int to_state = basis_state_.which_state();
     wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_state_.spin_states());
@@ -204,37 +204,6 @@ int SysConfig::do_upspin_hop(void)
   return 0;
 }
 
-int SysConfig::do_dnspin_hop(void)
-{
-  if (basis_state_.gen_dnspin_hop()) {
-    int spin = basis_state_.which_spin();
-    int to_state = basis_state_.which_state();
-    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_state_.spin_states());
-    // ratio of Pfaffians
-    //amplitude_t pf_ratio = psi_col_.cwiseProduct(psi_inv_.row(dnspin)).sum();
-    amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();
-    if (std::abs(pf_ratio) < 1.0E-12) { // for safety
-      basis_state_.undo_last_move();
-      return 0; 
-    } 
-    auto weight_ratio = pf_ratio;
-    double transition_proby = std::norm(weight_ratio);
-    num_proposed_moves_[move_t::dnhop]++;
-    last_proposed_moves_++;
-    if (basis_state_.rng().random_real()<transition_proby) {
-      num_accepted_moves_[move_t::dnhop]++;
-      last_accepted_moves_++;
-      // upddate state
-      basis_state_.commit_last_move();
-      // update amplitudes
-      inv_update_for_hop(spin,psi_row_,psi_col_,pf_ratio);
-    }
-    else {
-      basis_state_.undo_last_move();
-    }
-  } 
-  return 0;
-}
 
 /*
 int SysConfig::do_spin_exchange(void)
@@ -348,7 +317,7 @@ int SysConfig::apply(const model::op::quantum_op& qn_op, const int& i) const
 {
   switch (qn_op.id()) {
     case model::op_id::ni_sigma:
-      return basis_state_.op_ni_up(i)+basis_state_.op_ni_up(i);
+      return basis_state_.op_ni_up(i)+basis_state_.op_ni_dn(i);
     /*case model::op_id::ni_up:
       return basis_state_.op_ni_up(i);
     case model::op_id::ni_dn:
@@ -410,6 +379,8 @@ amplitude_t SysConfig::apply_dnspin_hop(const int& src, const int& tgt,
 
 amplitude_t SysConfig::apply_sisj_plus(const unsigned& i, const unsigned& j) const
 {
+ return amplitude_t(0.0);
+#ifdef OLD_VERSION
 /* It evaluates the following operator:
  !   O = (S_i.S_j - (n_i n_j)/4)
  ! The operator can be cast in the form,
@@ -485,12 +456,16 @@ amplitude_t SysConfig::apply_sisj_plus(const unsigned& i, const unsigned& j) con
     std::cout << "NaN detected\n"; getchar();
   }*/
   return -0.5 * det_ratio + amplitude_t(ninj_term);
+#endif
 }
 
 amplitude_t SysConfig::apply_bondsinglet_hop(const unsigned& i_dag, 
   const unsigned& ia_dag, const int& bphase_i, const unsigned& j, 
   const unsigned& jb, const int& bphase_j) const
 {
+  return amplitude_t(0.0);
+#ifdef OLD_VERSION
+
   // Evaluates the following operator:
   //   F_{ab}(i,j) = (c^{\dag}_{i\up}c^{\dag}_{i+a\dn} -  c^{\dag}_{i\dn}c^{\dag}_{i+a,\up})/sqrt(2)
   //          x (c_{j+b\dn}c_{j\up} - c_{j+b\up}c_{j\dn})/sqrt(2)
@@ -602,6 +577,7 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const unsigned& i_dag,
 
   int bc_phase = bphase_i * bphase_j;
   return 0.5 * bc_phase * net_ratio;
+#endif
 }
 
 void SysConfig::get_grad_logpsi(RealVector& grad_logpsi) const
@@ -618,10 +594,11 @@ void SysConfig::get_grad_logpsi(RealVector& grad_logpsi) const
     }
   }
   // grad_logpsi wrt wf_ parameters
+  /*
   for (int n=0; n<wf_.varparms().size(); ++n) {
     wf_.get_gradients(psi_grad_,n,basis_state_.upspin_sites(), basis_state_.dnspin_sites());
     grad_logpsi(p+n) = std::real(psi_grad_.cwiseProduct(psi_inv_.transpose()).sum());
-  }
+  }*/
 }
 
 double SysConfig::accept_ratio(void)

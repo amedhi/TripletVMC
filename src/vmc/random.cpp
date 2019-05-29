@@ -35,31 +35,43 @@ void RandomGenerator::time_seed(void)
   this->std::mt19937_64::seed(itc);
 }
 
-void RandomGenerator::set_site_generator(const unsigned& min, const unsigned& max)
+void RandomGenerator::set_site_generator(const int& min, const int& max)
 {
   if (min>max) throw std::runtime_error("RandomGenerator::set_site_generator: invalid input");
   site_generator = int_generator(min, max);
 }
 
-void RandomGenerator::set_upspin_generator(const unsigned& min, const unsigned& max)
+void RandomGenerator::set_spin_generator(const int& min, const int& max)
+{
+  if (min>max) throw std::runtime_error("RandomGenerator::set_site_generator: invalid input");
+  spin_generator = int_generator(min, max);
+}
+
+void RandomGenerator::set_hole_generator(const int& min, const int& max)
+{
+  if (min>max) throw std::runtime_error("RandomGenerator::set_site_generator: invalid input");
+  hole_generator = int_generator(min, max);
+}
+
+void RandomGenerator::set_upspin_generator(const int& min, const int& max)
 {
   if (min>max) throw std::runtime_error("RandomGenerator::set_upspin_generator: invalid input");
   upspin_generator = int_generator(min, max);
 }
 
-void RandomGenerator::set_dnspin_generator(const unsigned& min, const unsigned& max)
+void RandomGenerator::set_dnspin_generator(const int& min, const int& max)
 {
   if (min>max) throw std::runtime_error("RandomGenerator::set_dnspin_generator: invalid input");
   dnspin_generator = int_generator(min, max);
 }
 
-void RandomGenerator::set_uphole_generator(const unsigned& min, const unsigned& max)
+void RandomGenerator::set_uphole_generator(const int& min, const int& max)
 {
   if (min>max) throw std::runtime_error("RandomGenerator::set_uphole_generator: invalid input");
   uphole_generator = int_generator(min, max);
 }
 
-void RandomGenerator::set_dnhole_generator(const unsigned& min, const unsigned& max)
+void RandomGenerator::set_dnhole_generator(const int& min, const int& max)
 {
   if (min>max) throw std::runtime_error("RandomGenerator::set_dnhole_generator: invalid input");
   dnhole_generator = int_generator(min, max);

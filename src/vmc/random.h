@@ -23,27 +23,33 @@ public:
   RandomGenerator();
   RandomGenerator(const unsigned& seed_type);
   ~RandomGenerator() {};
-  void set_site_generator(const unsigned& min, const unsigned& max);
-  void set_upspin_generator(const unsigned& min, const unsigned& max);
-  void set_dnspin_generator(const unsigned& min, const unsigned& max);
-  void set_uphole_generator(const unsigned& min, const unsigned& max);
-  void set_dnhole_generator(const unsigned& min, const unsigned& max);
+  void set_site_generator(const int& min, const int& max);
+  void set_spin_generator(const int& min, const int& max);
+  void set_hole_generator(const int& min, const int& max);
+  void set_upspin_generator(const int& min, const int& max);
+  void set_dnspin_generator(const int& min, const int& max);
+  void set_uphole_generator(const int& min, const int& max);
+  void set_dnhole_generator(const int& min, const int& max);
   void seed(const int& seed_type);
   void time_seed(void);
   //unsigned random_idx(const unsigned& site_type) {return state_dist_map[site_type](*this); }
   //unsigned random_idx(const unsigned& site_type) { return state_generators[site_type](*this); }
   //unsigned random_site(void) { return site_dist[0](*this); }
-  unsigned random_site(void) { return site_generator(*this); }
-  unsigned random_upspin(void) { return upspin_generator(*this); }
-  unsigned random_dnspin(void) { return dnspin_generator(*this); }
-  unsigned random_uphole(void) { return uphole_generator(*this); }
-  unsigned random_dnhole(void) { return dnhole_generator(*this); }
+  int random_site(void) { return site_generator(*this); }
+  int random_spin(void) { return spin_generator(*this); }
+  int random_hole(void) { return hole_generator(*this); }
+  int random_upspin(void) { return upspin_generator(*this); }
+  int random_dnspin(void) { return dnspin_generator(*this); }
+  int random_uphole(void) { return uphole_generator(*this); }
+  int random_dnhole(void) { return dnhole_generator(*this); }
   double random_real(void) { return real_generator(*this); }
 private:
   using int_generator = std::uniform_int_distribution<unsigned>;
   using myclock = std::chrono::high_resolution_clock;
   int seed_type_;
   int_generator site_generator; 
+  int_generator spin_generator; 
+  int_generator hole_generator; 
   int_generator upspin_generator; 
   int_generator dnspin_generator; 
   int_generator uphole_generator; 
