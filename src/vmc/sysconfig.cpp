@@ -12,7 +12,7 @@ namespace vmc {
 
 SysConfig::SysConfig(const input::Parameters& inputs, 
   const lattice::LatticeGraph& graph, const model::Hamiltonian& model)
-  : basis_state_(graph.num_sites(), model.double_occupancy())
+  : basis_(graph.num_sites(), model.double_occupancy())
   , wf_(graph, inputs)
   , pj_(inputs)
   , num_sites_(graph.num_sites())
@@ -82,23 +82,23 @@ int SysConfig::init_config(void)
     throw std::range_error("*SysConfig::init_config: unequal UP & DN spin case not implemented");
   // small 'gfactor' caution
   bool tmp_restriction = false;
-  bool original_state = basis_state_.double_occupancy();
+  bool original_state = basis_.double_occupancy();
   if (pj_.have_gutzwiller()) {
     if (pj_.gw_factor()<gfactor_cutoff()) {
-      //BasisState::allow_double_occupancy(false);
-      //tmp_restriction = true;
+      basis_.set_double_occupancy(false);
+      tmp_restriction = true;
     }
   }
-  basis_state_.init_spins(num_upspins_, num_dnspins_);
+  basis_.init_spins(num_upspins_, num_dnspins_);
   psi_mat_.resize(num_spins_,num_spins_);
   psi_inv_.resize(num_spins_,num_spins_);
 
   // try for a well condictioned amplitude matrix
-  basis_state_.set_random();
+  basis_.set_random();
   int num_attempt = 0;
   while (true) {
-    wf_.get_amplitudes(psi_mat_,basis_state_.spin_states());
-    //std::cout << basis_state_ << "\n"; getchar();
+    wf_.get_amplitudes(psi_mat_,basis_.spin_states());
+    //std::cout << basis_ << "\n"; getchar();
     //std::cout << psi_mat_ << "\n"; getchar();
     // reciprocal conditioning number
     Eigen::JacobiSVD<ComplexMatrix> svd(psi_mat_);
@@ -108,12 +108,12 @@ int SysConfig::init_config(void)
     //std::cout << "rcondition number = "<< rcond << "\n";
     if (rcond>1.0E-15) break;
     // try new basis state
-    basis_state_.set_random();
+    basis_.set_random();
     if (++num_attempt > 1000) {
       throw std::underflow_error("*SysConfig::init: configuration wave function ill conditioned.");
     }
   }
-  //if (tmp_restriction) allow_double_occupancy(original_state);
+  if (tmp_restriction) basis_.set_double_occupancy(original_state);
 
   // amplitude matrix invers
   psi_inv_ = psi_mat_.inverse();
@@ -124,23 +124,18 @@ int SysConfig::init_config(void)
 
 int SysConfig::set_run_parameters(void)
 {
-  num_updates_ = 0;
+  num_mcsteps_ = 0;
+  num_iterations_ = 0;
   refresh_cycle_ = 100;
   // number of moves per mcstep
-  int n_up = static_cast<int>(num_upspins_);
-  int n_dn = static_cast<int>(num_dnspins_);
-  if (basis_state_.double_occupancy()) {
-    num_uphop_moves_ = num_spins_;
-    num_dnhop_moves_ = 0; //num_dnspins_;
-    num_exchange_moves_ = std::min(n_up, n_dn);
-    //num_exchange_moves_ = 2*std::min(n_up, n_dn);
+  if (basis_.double_occupancy()) {
+    num_hopping_moves_ = num_spins_;
+    num_exchange_moves_ = std::min(num_upspins_,num_dnspins_);
   }
   else {
-    int num_holes = num_sites_-(num_upspins_+num_dnspins_);
-    num_uphop_moves_ = std::min(n_up,num_holes);
-    num_dnhop_moves_ = 0; // std::min(n_dn,num_holes);
-    num_exchange_moves_ = std::min(n_up, n_dn);
-    //num_exchange_moves_ = 4*std::min(n_up, n_dn);
+    int num_holes = num_sites_-num_spins_;
+    num_hopping_moves_ = std::min(num_spins_,num_holes);
+    num_exchange_moves_ = std::min(num_upspins_,num_dnspins_);
   }
   for (int i=0; i<move_t::end; ++i) {
     num_proposed_moves_[i] = 0;
@@ -164,62 +159,64 @@ int SysConfig::update_state(void)
 {
   //std::cout << "SysConfig::update_state: all update skipped\n";
   //return 0;
-
-  for (int n=0; n<num_uphop_moves_; ++n) do_spin_hop();
-  for (int n=0; n<num_exchange_moves_; ++n) do_spin_exchange();
-  num_updates_++;
-  if (num_updates_ % refresh_cycle_ == 0) {
+  for (int n=0; n<num_hopping_moves_; ++n) do_hopping_move();
+  for (int n=0; n<num_exchange_moves_; ++n) do_exchange_move();
+  num_mcsteps_++;
+  num_iterations_++;
+  if (num_iterations_ == refresh_cycle_) {
     psi_inv_ = psi_mat_.inverse();
+    num_iterations_ = 0;
+    //std::cout << "'psi_inv' refreshed\n";
   }
   return 0;
 }
 
-int SysConfig::do_spin_hop(void)
+int SysConfig::do_hopping_move(void)
 {
-  if (basis_state_.gen_spin_hop()) {
-    int spin = basis_state_.which_spin();
-    int to_state = basis_state_.which_state();
-    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_state_.spin_states());
+  if (basis_.gen_spin_hop()) {
+    int spin = basis_.which_spin();
+    int to_state = basis_.which_state();
+    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_.spin_states());
 
     // ratio of Pfaffians
     amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();
-    if (std::abs(pf_ratio) < 1.0E-12) { // for safety
-      basis_state_.undo_last_move();
+    if (std::abs(pf_ratio) < ratio_cutoff()) { // for safety
+      basis_.undo_last_move();
       return 0; 
     } 
     auto weight_ratio = pf_ratio;
     double transition_proby = std::norm(weight_ratio);
     num_proposed_moves_[move_t::uphop]++;
     last_proposed_moves_++;
-    if (basis_state_.rng().random_real()<transition_proby) {
+    if (basis_.rng().random_real()<transition_proby) {
       num_accepted_moves_[move_t::uphop]++;
       last_accepted_moves_++;
       // upddate state
-      basis_state_.commit_last_move();
+      basis_.commit_last_move();
       // update amplitudes
       inv_update_for_hop(spin,psi_row_,psi_col_,pf_ratio);
     }
     else {
-      basis_state_.undo_last_move();
+      basis_.undo_last_move();
     }
   } 
   return 0;
 }
 
-int SysConfig::do_spin_exchange(void)
+int SysConfig::do_exchange_move(void)
 {
-  if (basis_state_.gen_exchange_move()) {
+  if (basis_.gen_exchange_move()) {
     // for the first hop
-    int spin = basis_state_.which_spin();
-    int to_state = basis_state_.which_state();
-    int spin2 = basis_state_.which_second_spin();
-    int to_state2 = basis_state_.which_second_state();
+    int spin = basis_.which_spin();
+    int to_state = basis_.which_state();
+    int spin2 = basis_.which_second_spin();
+    int to_state2 = basis_.which_second_state();
 
     // ratio of Pfaffians
-    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_state_.spin_states());
+    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_.spin_states());
     amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();
-    if (std::abs(pf_ratio) < 1.0E-10) { // for safety
-      basis_state_.undo_last_move();
+    if (std::abs(pf_ratio) < ratio_cutoff()) { // for safety
+      basis_.undo_last_move();
       return 0; 
     } 
     //  need to TEMPORARILY update 'psi_inv_' for the above move.
@@ -250,12 +247,12 @@ int SysConfig::do_spin_exchange(void)
     inv_col_(spin) = psi_inv_tmp_(spin,spin2)*ratio_inv;
 
     // pf_ratio for the second-hop
-    basis_state_.do_exchange_first_move();
-    wf_.get_amplitudes(psi_row2_,psi_col2_,spin2,to_state2,basis_state_.spin_states());
+    basis_.do_exchange_first_move();
+    wf_.get_amplitudes(psi_row2_,psi_col2_,spin2,to_state2,basis_.spin_states());
     amplitude_t pf_ratio2 = psi_row2_.cwiseProduct(inv_col_).sum();
-    basis_state_.undo_exchange_first_move();
-    if (std::abs(pf_ratio2) < 1.0E-10) { // for safety
-      basis_state_.undo_last_move();
+    basis_.undo_exchange_first_move();
+    if (std::abs(pf_ratio2) < ratio_cutoff()) { // for safety
+      basis_.undo_last_move();
       return 0; 
     } 
 
@@ -263,10 +260,10 @@ int SysConfig::do_spin_exchange(void)
     double transition_proby = std::norm(weight_ratio);
     num_proposed_moves_[move_t::exch]++;
     last_proposed_moves_++;
-    if (basis_state_.rng().random_real()<transition_proby) {
+    if (basis_.rng().random_real()<transition_proby) {
       num_accepted_moves_[move_t::exch]++;
       last_accepted_moves_++;
-      basis_state_.commit_last_move();
+      basis_.commit_last_move();
 
       // update 'psi_mat_' & 'psi_inv_' for the first move 
       psi_mat_.row(spin) = psi_row_;
@@ -286,64 +283,12 @@ int SysConfig::do_spin_exchange(void)
       inv_update_for_hop(spin2,psi_row2_,psi_col2_,pf_ratio2);
     }
     else {
-      basis_state_.undo_last_move();
+      basis_.undo_last_move();
     }
   } 
   return 0;
 }
 
-/*
-int SysConfig::do_spin_exchange(void)
-{
-  int upspin, up_tosite;
-  std::tie(upspin, up_tosite) = gen_exchange_move();
-  if (up_tosite < 0) return 0; // valid move not found
-  num_proposed_moves_[move_t::exch]++;
-  last_proposed_moves_++;
-  // for upspin hop forward
-  wf_.get_amplitudes(psi_row_, up_tosite, dnspin_sites());
-  amplitude_t det_ratio1 = psi_row_.cwiseProduct(psi_inv_.col(upspin)).sum();
-  if (std::abs(det_ratio1) < dratio_cutoff()) return 0; // for safety
-
-  // now for dnspin hop backward
-  int dnspin, dn_tosite;
-  std::tie(dnspin, dn_tosite) = exchange_move_part();
-  // new col for this move
-  wf_.get_amplitudes(psi_col_, upspin_sites(), dn_tosite);
-  // since the upspin should have moved
-  wf_.get_amplitudes(psi_col_(upspin), up_tosite, dn_tosite);
-  // updated 'dnspin'-th row of psi_inv_
-  amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio1;
-  // elements other than 'upspin'-th
-  for (int i=0; i<upspin; ++i) {
-    amplitude_t beta = ratio_inv*psi_row_.cwiseProduct(psi_inv_.col(i)).sum();
-    inv_row_(i) = psi_inv_(dnspin,i) - beta * psi_inv_(dnspin,upspin);
-  }
-  for (int i=upspin+1; i<static_cast<int>(num_upspins_); ++i) {
-    amplitude_t beta = ratio_inv*psi_row_.cwiseProduct(psi_inv_.col(i)).sum();
-    inv_row_(i) = psi_inv_(dnspin,i) - beta * psi_inv_(dnspin,upspin);
-  }
-  inv_row_(upspin) = ratio_inv * psi_inv_(dnspin,upspin);
-  // ratio for the dnspin hop
-  amplitude_t det_ratio2 = psi_col_.cwiseProduct(inv_row_).sum();
-  if (std::abs(det_ratio2) < dratio_cutoff()) return 0; // for safety
-
-  // weight ratio (gw pj_ does not play here)
-  amplitude_t weight_ratio = det_ratio1 * det_ratio2;
-  double transition_proby = std::norm(weight_ratio);
-  //std::cout << "W = " << transition_proby << "\n";
-  if (rng().random_real()<transition_proby) {
-    num_accepted_moves_[move_t::exch]++;
-    last_accepted_moves_++;
-    // upddate state
-    accept_last_move();
-    // update amplitudes
-    inv_update_upspin(upspin,psi_row_,det_ratio1);
-    inv_update_dnspin(dnspin,psi_col_,det_ratio2);
-  }
-  return 0;
-}
-*/
 
 int SysConfig::inv_update_for_hop(const int& spin, const ColVector& new_row, 
   const RowVector& new_col, const amplitude_t& pf_ratio)
@@ -405,14 +350,14 @@ int SysConfig::apply(const model::op::quantum_op& qn_op, const int& i) const
 {
   switch (qn_op.id()) {
     case model::op_id::ni_sigma:
-      return basis_state_.op_ni_up(i)+basis_state_.op_ni_dn(i);
+      return basis_.op_ni_up(i)+basis_.op_ni_dn(i);
     /*case model::op_id::ni_up:
-      return basis_state_.op_ni_up(i);
+      return basis_.op_ni_up(i);
     case model::op_id::ni_dn:
-      return basis_state_.op_ni_dn(i);
+      return basis_.op_ni_dn(i);
     */
     case model::op_id::niup_nidn:
-      return basis_state_.op_ni_updn(i);
+      return basis_.op_ni_updn(i);
     default: 
       throw std::range_error("SysConfig::apply: undefined site operator");
   }
@@ -420,24 +365,22 @@ int SysConfig::apply(const model::op::quantum_op& qn_op, const int& i) const
 
 int SysConfig::apply_niup_nidn(const int& site_i) const
 {
-  return basis_state_.op_ni_updn(site_i);
+  return basis_.op_ni_updn(site_i);
 }
 
 amplitude_t SysConfig::apply_upspin_hop(const int& src, const int& tgt,
   const int& bc_phase) const
 {
-  if (src == tgt) return ampl_part(basis_state_.op_ni_up(src));
-  if (basis_state_.op_cdagc_up(src,tgt)) {
-    int spin = basis_state_.which_spin();
-    int to_state = basis_state_.which_state();
-    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_state_.spin_states());
+  if (src == tgt) return ampl_part(basis_.op_ni_up(src));
+  if (basis_.op_cdagc_up(src,tgt)) {
+    int spin = basis_.which_spin();
+    int to_state = basis_.which_state();
+    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_.spin_states());
     // ratio of Pfaffians
     amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();
-    int delta_nd = basis_state_.delta_nd();
-    /*if (std::abs(pf_ratio)>10.0) {
-      std::cout << "ratio = " << pf_ratio << "\n"; getchar();
-    }*/
-    return amplitude_t(bc_phase) * pf_ratio * pj_.gw_ratio(delta_nd);
+    int delta_nd = basis_.delta_nd();
+    amplitude_t ratio = ampl_part(std::conj(pf_ratio));
+    return amplitude_t(bc_phase) * ratio * pj_.gw_ratio(delta_nd);
   }
   else {
     return amplitude_t(0.0);
@@ -447,28 +390,24 @@ amplitude_t SysConfig::apply_upspin_hop(const int& src, const int& tgt,
 amplitude_t SysConfig::apply_dnspin_hop(const int& src, const int& tgt,
   const int& bc_phase) const
 {
-  if (src == tgt) return ampl_part(basis_state_.op_ni_dn(src));
-  if (basis_state_.op_cdagc_dn(src,tgt)) {
-    int spin = basis_state_.which_spin();
-    int to_state = basis_state_.which_state();
-    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_state_.spin_states());
+  if (src == tgt) return ampl_part(basis_.op_ni_dn(src));
+  if (basis_.op_cdagc_dn(src,tgt)) {
+    int spin = basis_.which_spin();
+    int to_state = basis_.which_state();
+    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_.spin_states());
     // ratio of Pfaffians
     amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();
-    int delta_nd = basis_state_.delta_nd();
-    /*if (std::abs(pf_ratio)>10.0) {
-      std::cout << "ratio = " << pf_ratio << "\n"; getchar();
-    }*/
-    return amplitude_t(bc_phase) * pf_ratio * pj_.gw_ratio(delta_nd);
+    int delta_nd = basis_.delta_nd();
+    amplitude_t ratio = ampl_part(std::conj(pf_ratio));
+    return amplitude_t(bc_phase) * ratio * pj_.gw_ratio(delta_nd);
   }
   else {
     return amplitude_t(0.0);
   }
 }
 
-amplitude_t SysConfig::apply_sisj_plus(const unsigned& i, const unsigned& j) const
+amplitude_t SysConfig::apply_sisj_plus(const int& site_i, const int& site_j) const 
 {
- return amplitude_t(0.0);
-#ifdef OLD_VERSION
 /* It evaluates the following operator:
  !   O = (S_i.S_j - (n_i n_j)/4)
  ! The operator can be cast in the form,
@@ -477,74 +416,62 @@ amplitude_t SysConfig::apply_sisj_plus(const unsigned& i, const unsigned& j) con
  !   O_{ud} = 1/2*(- c^{\dag}_{j\up}c_{i\up} c^{\dag}_{i\dn}c_{j\dn}
  !                 - n_{i\up} n_{j_dn})
  ! O_{du} is obtained from O_{ud} by interchanging spin indices. */
-
-  const SiteState* state_i = &operator[](i);
-  const SiteState* state_j = &operator[](j);
-  // ni_nj term
-  double ninj_term;
-  if (state_i->have_upspin() && state_j->have_dnspin()) 
+  double ninj_term = 0.0;
+  if (basis_.op_ni_up(site_i) && basis_.op_ni_dn(site_j)) {
     ninj_term = -0.5;
-  else if (state_i->have_dnspin() && state_j->have_upspin()) 
+  }
+  else if (basis_.op_ni_dn(site_i) && basis_.op_ni_up(site_j)) {
     ninj_term = -0.5;
-  else ninj_term = 0.0;
-
-  // spin exchange term
-  // if any of the two sites doubly occupied, no exchange possible
-  if (state_i->count()==2 || state_j->count()==2) return amplitude_t(ninj_term);
-
-  unsigned upspin, up_tosite;
-  unsigned dnspin, dn_tosite;
-  if (state_i->have_upspin() && state_j->have_dnspin()) {
-    upspin = state_i->upspin_id();
-    up_tosite = j;
-    dnspin = state_j->dnspin_id();
-    dn_tosite = i;
   }
-  else if (state_i->have_dnspin() && state_j->have_upspin()) {
-    upspin = state_j->upspin_id();
-    up_tosite = i;
-    dnspin = state_i->dnspin_id();
-    dn_tosite = j;
+  if (basis_.op_sisj(site_i,site_j)) {
+    int spin = basis_.which_spin();
+    int to_state = basis_.which_state();
+    int spin2 = basis_.which_second_spin();
+    int to_state2 = basis_.which_second_state();
+    // ratio of Pfaffians
+    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_.spin_states());
+    amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();
+    //  need to TEMPORARILY update 'psi_inv_' for the above move.
+    amplitude_t det_ratio1 = pf_ratio;
+    amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio1;
+    // for safety: if 'det_ratio1 == 0', result is zero
+    if (std::isinf(std::abs(ratio_inv))) {
+      return amplitude_t(ninj_term);
+    }
+    // update for the 'row' change
+    for (int i=0; i<spin; ++i) {
+      amplitude_t beta = ratio_inv*psi_row_.cwiseProduct(psi_inv_.col(i)).sum();
+      psi_inv_tmp_.col(i) = psi_inv_.col(i)-beta*psi_inv_.col(spin);
+    }
+    for (int i=spin+1; i<num_spins_; ++i) {
+      amplitude_t beta = ratio_inv*psi_row_.cwiseProduct(psi_inv_.col(i)).sum();
+      psi_inv_tmp_.col(i) = psi_inv_.col(i)-beta*psi_inv_.col(spin);
+    }
+    psi_inv_tmp_.col(spin) = psi_inv_.col(spin)*ratio_inv;
+    // additional change due to the 'col' change
+    amplitude_t det_ratio2 = psi_col_.cwiseProduct(psi_inv_tmp_.row(spin)).sum();
+    ratio_inv = amplitude_t(1.0)/det_ratio2;
+    for (int i=0; i<spin; ++i) {
+      amplitude_t beta = ratio_inv*psi_col_.cwiseProduct(psi_inv_tmp_.row(i)).sum();
+      inv_col_(i) = psi_inv_tmp_(i,spin2)-beta*psi_inv_tmp_(spin,spin2);
+    }
+    for (int i=spin+1; i<num_spins_; ++i) {
+      amplitude_t beta = ratio_inv*psi_col_.cwiseProduct(psi_inv_tmp_.row(i)).sum();
+      inv_col_(i) = psi_inv_tmp_(i,spin2)-beta*psi_inv_tmp_(spin,spin2);
+    }
+    inv_col_(spin) = psi_inv_tmp_(spin,spin2)*ratio_inv;
+
+    // pf_ratio for the second-hop
+    basis_.do_exchange_first_move();
+    wf_.get_amplitudes(psi_row2_,psi_col2_,spin2,to_state2,basis_.spin_states());
+    amplitude_t pf_ratio2 = psi_row2_.cwiseProduct(inv_col_).sum();
+    basis_.undo_exchange_first_move();
+    amplitude_t net_ratio = ampl_part(std::conj(pf_ratio*pf_ratio2));
+    return -0.5*net_ratio + amplitude_t(ninj_term);
   }
-  else return amplitude_t(ninj_term);
-
-  // det_ratio for the term
-  wf_.get_amplitudes(psi_row_, up_tosite, dnspin_sites());
-  amplitude_t det_ratio1 = psi_row_.cwiseProduct(psi_inv_.col(upspin)).sum();
-  // now for dnspin hop 
-  wf_.get_amplitudes(psi_col_, upspin_sites(), dn_tosite);
-  // since the upspin should have moved
-  wf_.get_amplitudes(psi_col_(upspin), up_tosite, dn_tosite);
-  // updated 'dnspin'-th row of psi_inv_
-  amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio1;
-
-  // for safety: if 'det_ratio1 == 0', result is zero
-  if (std::isinf(std::abs(ratio_inv))) {
+  else {
     return amplitude_t(ninj_term);
   }
-
-  // elements other than 'upspin'-th
-  for (unsigned i=0; i<upspin; ++i) {
-    amplitude_t beta = ratio_inv*psi_row_.cwiseProduct(psi_inv_.col(i)).sum();
-    inv_row_(i) = psi_inv_(dnspin,i) - beta * psi_inv_(dnspin,upspin);
-  }
-  for (unsigned i=upspin+1; i<num_upspins_; ++i) {
-    amplitude_t beta = ratio_inv*psi_row_.cwiseProduct(psi_inv_.col(i)).sum();
-    inv_row_(i) = psi_inv_(dnspin,i) - beta * psi_inv_(dnspin,upspin);
-  }
-  inv_row_(upspin) = ratio_inv * psi_inv_(dnspin,upspin);
-  // ratio for the dnspin hop
-  amplitude_t det_ratio2 = psi_col_.cwiseProduct(inv_row_).sum();
-  amplitude_t det_ratio = ampl_part(std::conj(det_ratio1*det_ratio2));
-  /*
-  if (std::isnan(det_ratio)) {
-    std::cout << std::scientific<< det_ratio1 << "\n\n";
-    std::cout << std::scientific<< ratio_inv << "\n\n";
-    std::cout << std::scientific<< det_ratio2 << "\n\n";
-    std::cout << "NaN detected\n"; getchar();
-  }*/
-  return -0.5 * det_ratio + amplitude_t(ninj_term);
-#endif
 }
 
 amplitude_t SysConfig::apply_bondsinglet_hop(const unsigned& i_dag, 
@@ -675,7 +602,7 @@ void SysConfig::get_grad_logpsi(RealVector& grad_logpsi) const
   for (int n=0; n<p; ++n) {
     if (pj_.varparms()[n].name()=="gfactor") {
       double g = pj_.varparms()[n].value();
-      grad_logpsi(n) = static_cast<double>(basis_state_.dbocc_count())/g;
+      grad_logpsi(n) = static_cast<double>(basis_.dbocc_count())/g;
     }
     else {
       throw std::range_error("SysConfig::get_grad_logpsi: this pj_ parameter not implemented\n");
@@ -684,7 +611,7 @@ void SysConfig::get_grad_logpsi(RealVector& grad_logpsi) const
   // grad_logpsi wrt wf_ parameters
   /*
   for (int n=0; n<wf_.varparms().size(); ++n) {
-    wf_.get_gradients(psi_grad_,n,basis_state_.upspin_sites(), basis_state_.dnspin_sites());
+    wf_.get_gradients(psi_grad_,n,basis_.upspin_sites(), basis_.dnspin_sites());
     grad_logpsi(p+n) = std::real(psi_grad_.cwiseProduct(psi_inv_.transpose()).sum());
   }*/
 }
@@ -716,7 +643,7 @@ void SysConfig::print_stats(std::ostream& os) const
   double hop_ratio = double(100.0*accepted_hops)/(proposed_hops);
   double exch_ratio = double(100.0*accepted_exch)/(proposed_exch);
   os << "--------------------------------------\n";
-  os << " total mcsteps = " << num_updates_ <<"\n";
+  os << " total mcsteps = " << num_mcsteps_ <<"\n";
   os << " total accepted moves = " << (accepted_hops+accepted_exch)<<"\n";
   os << " acceptance ratio = " << accept_ratio << " %\n";
   if (proposed_hops>0) os << " hopping = " << hop_ratio << " %\n";

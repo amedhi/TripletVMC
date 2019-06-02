@@ -34,6 +34,7 @@ public:
   RandomGenerator& rng(void) const { return rng_; }
   void init(const int& num_sites, const bool& allow_dbl=true);
   void init_spins(const int& num_upspins, const int& num_dnspins);
+  void set_double_occupancy(const bool& yesno) { double_occupancy_=yesno; }
   const ivector& state(void) const { return occu_n_; }
   const std::vector<int>& spin_states(void) const { return spin_states_; }
   const bool& double_occupancy(void) const { return double_occupancy_; }
@@ -54,6 +55,7 @@ public:
   int op_ni_updn(const int& site) const;
   bool op_cdagc_up(const int& fr_site, const int& to_site) const;
   bool op_cdagc_dn(const int& fr_site, const int& to_site) const;
+  bool op_sisj(const int& site_i, const int& site_j) const;
   int op_exchange_ud(const int& fr_site, const int& to_site) const;
   const int op_sign(void) const { return op_sign_; }
   const int delta_nd(void) const { return delta_nd_; }

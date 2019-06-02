@@ -19,7 +19,7 @@
 
 namespace vmc {
 
-constexpr double dratio_cutoff(void) { return 1.0E-8; } 
+constexpr double ratio_cutoff(void) { return 1.0E-8; } 
 constexpr double gfactor_cutoff(void) { return 1.0E-8; } 
 
 class SysConfig 
@@ -32,7 +32,7 @@ public:
     const bool& with_gradient=false);
   int build(const lattice::LatticeGraph& graph, const var::parm_vector& vparms, 
     const bool& need_psi_grad=false);
-  RandomGenerator& rng(void) const { return basis_state_.rng(); }
+  RandomGenerator& rng(void) const { return basis_.rng(); }
   std::string signature_str(void) const { return wf_.signature_str(); } 
   const int& num_varparms(void) const { return num_varparms_; } 
   const var::parm_vector& vparm_values(void);
@@ -52,12 +52,12 @@ public:
     const int& bphase_j) const;
   int apply_niup_nidn(const int& site_i) const;
   void get_grad_logpsi(RealVector& grad_logpsi) const;
-  const int& num_updates(void) const { return num_updates_; }
+  const int& num_updates(void) const { return num_mcsteps_ ; }
   const var::Wavefunction& wavefunc(void) const { return wf_; }
   void print_stats(std::ostream& os=std::cout) const;
   //var::VariationalParms& var_parms(void) { return wf.var_parms(); }
 private:
-  FockBasis basis_state_;
+  mutable FockBasis basis_;
   var::Wavefunction wf_;
   var::WavefunProjector pj_;
   Matrix psi_mat_;
@@ -86,11 +86,10 @@ private:
 
   // mc parameters
   enum move_t {uphop, dnhop, exch, end};
-  int num_updates_{0};
-  //int num_total_steps_{0};
-  int num_uphop_moves_{0};
-  int num_dnhop_moves_{0};
+  int num_mcsteps_{0};
+  int num_hopping_moves_{0};
   int num_exchange_moves_{0};
+  int num_iterations_{0};
   int refresh_cycle_{100};
   long num_proposed_moves_[move_t::end];
   long num_accepted_moves_[move_t::end];
@@ -100,17 +99,17 @@ private:
   // helper methods
   int init_config(void);
   int set_run_parameters(void);
-  int do_spin_hop(void);
+  int do_hopping_move(void);
   int do_upspin_hop(void);
   int do_dnspin_hop(void);
-  int do_spin_exchange(void);
+  int do_exchange_move(void);
   int inv_update_for_hop(const int& spin, const ColVector& psi_row, 
     const RowVector& psi_col_, const amplitude_t& det_ratio);
   amplitude_t apply_upspin_hop(const int& i, const int& j,
     const int& bc_phase) const;
   amplitude_t apply_dnspin_hop(const int& i, const int& j,
     const int& bc_phase) const;
-  amplitude_t apply_sisj_plus(const unsigned& i, const unsigned& j) const;
+  amplitude_t apply_sisj_plus(const int& i, const int& j) const;
 };
 
 } // end namespace vmc

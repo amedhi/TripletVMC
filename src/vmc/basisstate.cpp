@@ -83,7 +83,6 @@ void FockBasis::set_random(void)
 {
   proposed_move_ = move_t::null;
   occu_n_.setZero();
-
 #ifndef CONSERVE_SPIN_NUM
   std::vector<int> all_states(num_states_);
   for (int i=0; i<num_states_; ++i) all_states[i] = i;
@@ -119,6 +118,7 @@ void FockBasis::set_random(void)
       i++;
       if (i == num_spins_) break;
     }
+    //std::cout << "i = " << i << "\n";
     int j = 0;
     for (auto& state : all_states) {
       if (occu_n_[state]==0) {
@@ -127,6 +127,9 @@ void FockBasis::set_random(void)
         j++;
       }
     }
+    //std::cout << "j = " << j << "\n";
+    //std::cout << "num_spins_ = " << num_spins_ << "\n";
+    //std::cout << "num_states_ = " << num_states_ << "\n";
   }
 #else
   // no of UP & DN spins conserved separately
@@ -181,7 +184,7 @@ void FockBasis::set_random(void)
     // holes
     j = num_sites_-num_upspins;
     for (int i=0; i<num_upspins_; ++i) {
-      int state = num_sites_+all_up_states[i];
+      int state = all_up_states[i];
       hole_states_[j] = state;
       spin_id_[state] = -(j+1);
       j++;
@@ -420,6 +423,9 @@ bool FockBasis::op_cdagc_up(const int& site_i, const int& site_j) const
     to_state_ = site_j;
   }
   else return false;
+  if (!double_occupancy_) {
+    if (occu_n_[to_state_+num_sites_]) return false;
+  }
   mv_spin_ = spin_id_[fr_state_];
   op_sign_ = 1;
   delta_nd_ = 0;
@@ -455,6 +461,9 @@ bool FockBasis::op_cdagc_dn(const int& site_i, const int& site_j) const
     to_state_ = idx_j;
   }
   else return false;
+  if (!double_occupancy_) {
+    if (occu_n_[to_state_-num_sites_]) return false;
+  }
   mv_spin_ = spin_id_[fr_state_];
   op_sign_ = 1;
   delta_nd_ = 0;
@@ -471,6 +480,56 @@ bool FockBasis::op_cdagc_dn(const int& site_i, const int& site_j) const
     if (occu_n_[i]) op_sign_ = -op_sign_;
   }
   for (int i=fr_state_+1; i<to_state_; ++i) {
+    if (occu_n_[i]) op_sign_ = -op_sign_;
+  }
+  return true;
+}
+
+bool FockBasis::op_sisj(const int& site_i, const int& site_j) const
+{
+  if (proposed_move_!=move_t::null) undo_last_move();
+  if (occu_n_[site_i] && !occu_n_[site_j]) {
+    fr_state_ = site_i;
+    to_state_ = site_j; 
+    if (occu_n_[site_j+num_sites_] && !occu_n_[site_i+num_sites_]) {
+      fr_state2_ = site_j+num_sites_;
+      to_state2_ = site_i+num_sites_;
+    }
+    else return false;
+  }
+  else if (!occu_n_[site_i] && occu_n_[site_j]) {
+    fr_state_ = site_j;
+    to_state_ = site_i; 
+    if (!occu_n_[site_j+num_sites_] && occu_n_[site_i+num_sites_]) {
+      fr_state2_ = site_i+num_sites_;
+      to_state2_ = site_j+num_sites_;
+    }
+    else return false;
+  }
+  else return false;
+  // valid exchange possible 
+  proposed_move_=move_t::exchange;
+  mv_spin_ = spin_id_[fr_state_];
+  mv_hole_ = -(spin_id_[to_state_]+1);
+  mv_spin2_ = spin_id_[fr_state2_];
+  mv_hole2_ = -(spin_id_[to_state2_]+1);
+  delta_nd_ = 0;
+  occu_n_[fr_state_] = 0;
+  occu_n_[to_state_] = 1;
+  occu_n_[fr_state2_] = 0;
+  occu_n_[to_state2_] = 1;
+  // sign (considered that the state is aready changed above)
+  op_sign_ = 1;
+  for (int i=to_state_+1; i<fr_state_; ++i) {
+    if (occu_n_[i]) op_sign_ = -op_sign_;
+  }
+  for (int i=fr_state_+1; i<to_state_; ++i) {
+    if (occu_n_[i]) op_sign_ = -op_sign_;
+  }
+  for (int i=to_state2_+1; i<fr_state2_; ++i) {
+    if (occu_n_[i]) op_sign_ = -op_sign_;
+  }
+  for (int i=fr_state2_+1; i<to_state2_; ++i) {
     if (occu_n_[i]) op_sign_ = -op_sign_;
   }
   return true;
