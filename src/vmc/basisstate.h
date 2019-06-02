@@ -41,8 +41,12 @@ public:
   void set_custom(void);
   bool gen_spin_hop(void);
   bool gen_exchange_move(void);
-  int which_spin(void) const;
+  void do_exchange_first_move(void);
+  void undo_exchange_first_move(void);
+  const int& which_spin(void) const;
   const int& which_state(void) const;
+  const int& which_second_spin(void) const;
+  const int& which_second_state(void) const;
   void commit_last_move(void);
   void undo_last_move(void) const;
   int op_ni_up(const int& site) const;
@@ -78,6 +82,10 @@ private:
   mutable int mv_hole_;
   mutable int fr_state_;
   mutable int to_state_;
+  mutable int mv_spin2_;
+  mutable int mv_hole2_;
+  mutable int fr_state2_;
+  mutable int to_state2_;
   mutable int op_sign_;
   int null_id_{-1};
   void clear(void); 

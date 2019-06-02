@@ -150,9 +150,12 @@ int SysConfig::set_run_parameters(void)
   last_accepted_moves_ = 1;
 
   // work arrays 
+  psi_inv_tmp_.resize(num_spins_,num_spins_);
   psi_row_.resize(num_spins_);
   psi_col_.resize(num_spins_);
-  inv_row_.resize(num_spins_);
+  psi_row2_.resize(num_spins_);
+  psi_col2_.resize(num_spins_);
+  inv_col_.resize(num_spins_);
   psi_grad_.resize(num_spins_,num_spins_);
   return 0;
 }
@@ -163,8 +166,7 @@ int SysConfig::update_state(void)
   //return 0;
 
   for (int n=0; n<num_uphop_moves_; ++n) do_spin_hop();
-  //for (int n=0; n<num_dnhop_moves_; ++n) do_dnspin_hop();
-  //for (int n=0; n<num_exchange_moves_; ++n) do_spin_exchange();
+  for (int n=0; n<num_exchange_moves_; ++n) do_spin_exchange();
   num_updates_++;
   if (num_updates_ % refresh_cycle_ == 0) {
     psi_inv_ = psi_mat_.inverse();
@@ -204,6 +206,91 @@ int SysConfig::do_spin_hop(void)
   return 0;
 }
 
+int SysConfig::do_spin_exchange(void)
+{
+  if (basis_state_.gen_exchange_move()) {
+    // for the first hop
+    int spin = basis_state_.which_spin();
+    int to_state = basis_state_.which_state();
+    int spin2 = basis_state_.which_second_spin();
+    int to_state2 = basis_state_.which_second_state();
+
+    // ratio of Pfaffians
+    wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_state_.spin_states());
+    amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();
+    if (std::abs(pf_ratio) < 1.0E-10) { // for safety
+      basis_state_.undo_last_move();
+      return 0; 
+    } 
+    //  need to TEMPORARILY update 'psi_inv_' for the above move.
+    amplitude_t det_ratio1 = pf_ratio;
+    amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio1;
+    // update for the 'row' change
+    for (int i=0; i<spin; ++i) {
+      amplitude_t beta = ratio_inv*psi_row_.cwiseProduct(psi_inv_.col(i)).sum();
+      psi_inv_tmp_.col(i) = psi_inv_.col(i)-beta*psi_inv_.col(spin);
+    }
+    for (int i=spin+1; i<num_spins_; ++i) {
+      amplitude_t beta = ratio_inv*psi_row_.cwiseProduct(psi_inv_.col(i)).sum();
+      psi_inv_tmp_.col(i) = psi_inv_.col(i)-beta*psi_inv_.col(spin);
+    }
+    psi_inv_tmp_.col(spin) = psi_inv_.col(spin)*ratio_inv;
+
+    // additional change due to the 'col' change
+    amplitude_t det_ratio2 = psi_col_.cwiseProduct(psi_inv_tmp_.row(spin)).sum();
+    ratio_inv = amplitude_t(1.0)/det_ratio2;
+    for (int i=0; i<spin; ++i) {
+      amplitude_t beta = ratio_inv*psi_col_.cwiseProduct(psi_inv_tmp_.row(i)).sum();
+      inv_col_(i) = psi_inv_tmp_(i,spin2)-beta*psi_inv_tmp_(spin,spin2);
+    }
+    for (int i=spin+1; i<num_spins_; ++i) {
+      amplitude_t beta = ratio_inv*psi_col_.cwiseProduct(psi_inv_tmp_.row(i)).sum();
+      inv_col_(i) = psi_inv_tmp_(i,spin2)-beta*psi_inv_tmp_(spin,spin2);
+    }
+    inv_col_(spin) = psi_inv_tmp_(spin,spin2)*ratio_inv;
+
+    // pf_ratio for the second-hop
+    basis_state_.do_exchange_first_move();
+    wf_.get_amplitudes(psi_row2_,psi_col2_,spin2,to_state2,basis_state_.spin_states());
+    amplitude_t pf_ratio2 = psi_row2_.cwiseProduct(inv_col_).sum();
+    basis_state_.undo_exchange_first_move();
+    if (std::abs(pf_ratio2) < 1.0E-10) { // for safety
+      basis_state_.undo_last_move();
+      return 0; 
+    } 
+
+    amplitude_t weight_ratio = pf_ratio*pf_ratio2;
+    double transition_proby = std::norm(weight_ratio);
+    num_proposed_moves_[move_t::exch]++;
+    last_proposed_moves_++;
+    if (basis_state_.rng().random_real()<transition_proby) {
+      num_accepted_moves_[move_t::exch]++;
+      last_accepted_moves_++;
+      basis_state_.commit_last_move();
+
+      // update 'psi_mat_' & 'psi_inv_' for the first move 
+      psi_mat_.row(spin) = psi_row_;
+      psi_mat_.col(spin) = psi_col_;
+      // 'row' change already updated in 'psi_inv_tmp_', affect 
+      // only 'col' change
+      for (int i=0; i<spin; ++i) {
+        amplitude_t beta = ratio_inv*psi_col_.cwiseProduct(psi_inv_tmp_.row(i)).sum();
+        psi_inv_.row(i) = psi_inv_tmp_.row(i) - beta * psi_inv_tmp_.row(spin);
+      }
+      for (int i=spin+1; i<num_spins_; ++i) {
+        amplitude_t beta = ratio_inv*psi_col_.cwiseProduct(psi_inv_tmp_.row(i)).sum();
+        psi_inv_.row(i) = psi_inv_tmp_.row(i) - beta * psi_inv_tmp_.row(spin);
+      }
+      psi_inv_.row(spin) = psi_inv_tmp_.row(spin)*ratio_inv;
+      // update 'psi_mat_' & 'psi_inv_' for the second move 
+      inv_update_for_hop(spin2,psi_row2_,psi_col2_,pf_ratio2);
+    }
+    else {
+      basis_state_.undo_last_move();
+    }
+  } 
+  return 0;
+}
 
 /*
 int SysConfig::do_spin_exchange(void)
@@ -258,11 +345,11 @@ int SysConfig::do_spin_exchange(void)
 }
 */
 
-int SysConfig::inv_update_for_hop(const int& spin, const ColVector& psi_row, 
-  const RowVector& psi_col, const amplitude_t& pf_ratio)
+int SysConfig::inv_update_for_hop(const int& spin, const ColVector& new_row, 
+  const RowVector& new_col, const amplitude_t& pf_ratio)
 {
-  psi_mat_.row(spin) = psi_row;
-  psi_mat_.col(spin) = psi_col;
+  psi_mat_.row(spin) = new_row;
+  psi_mat_.col(spin) = new_col;
 
   //psi_inv_ = psi_mat_.inverse();
   //return 0;
@@ -270,24 +357,25 @@ int SysConfig::inv_update_for_hop(const int& spin, const ColVector& psi_row,
   amplitude_t ratio_inv = amplitude_t(1.0)/pf_ratio;
   // update for the 'row' change
   for (int i=0; i<spin; ++i) {
-    amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv_.col(i)).sum();
+    amplitude_t beta = ratio_inv*new_row.cwiseProduct(psi_inv_.col(i)).sum();
     psi_inv_.col(i) -= beta * psi_inv_.col(spin);
   }
   for (int i=spin+1; i<num_spins_; ++i) {
-    amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv_.col(i)).sum();
+    amplitude_t beta = ratio_inv*new_row.cwiseProduct(psi_inv_.col(i)).sum();
     psi_inv_.col(i) -= beta * psi_inv_.col(spin);
   }
   psi_inv_.col(spin) *= ratio_inv;
 
   // update for the 'col' change
-  amplitude_t pf_ratio2 = psi_col_.cwiseProduct(psi_inv_.row(spin)).sum();
-  ratio_inv = amplitude_t(1.0)/pf_ratio2;
+  amplitude_t det_ratio2 = new_col.cwiseProduct(psi_inv_.row(spin)).sum();
+  //std::cout << "pf_ratio = "<<pf_ratio<<" pf_ratio2="<<pf_ratio2<<"\n"; getchar();
+  ratio_inv = amplitude_t(1.0)/det_ratio2;
   for (int i=0; i<spin; ++i) {
-    amplitude_t beta = ratio_inv*psi_col_.cwiseProduct(psi_inv_.row(i)).sum();
+    amplitude_t beta = ratio_inv*new_col.cwiseProduct(psi_inv_.row(i)).sum();
     psi_inv_.row(i) -= beta * psi_inv_.row(spin);
   }
   for (int i=spin+1; i<num_spins_; ++i) {
-    amplitude_t beta = ratio_inv*psi_col_.cwiseProduct(psi_inv_.row(i)).sum();
+    amplitude_t beta = ratio_inv*new_col.cwiseProduct(psi_inv_.row(i)).sum();
     psi_inv_.row(i) -= beta * psi_inv_.row(spin);
   }
   psi_inv_.row(spin) *= ratio_inv;

@@ -62,9 +62,12 @@ private:
   var::WavefunProjector pj_;
   Matrix psi_mat_;
   Matrix psi_inv_;
+  mutable Matrix psi_inv_tmp_;
   mutable ColVector psi_row_;
   mutable RowVector psi_col_;
-  mutable RowVector inv_row_;
+  mutable ColVector psi_row2_;
+  mutable RowVector psi_col2_;
+  mutable ColVector inv_col_;
   mutable Matrix psi_grad_;
   int num_sites_;
   int num_upspins_;
