@@ -69,7 +69,7 @@ void Energy::measure(const lattice::LatticeGraph& graph,
         for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
           unsigned site = graph.site(s);
           unsigned type = graph.site_type(s);
-          hubbard_nd(type) += config.apply_niup_nidn(site);
+          hubbard_nd(type) += config.apply_ni_updn(site);
         }
       }
       else {

@@ -50,7 +50,7 @@ public:
   amplitude_t apply_bondsinglet_hop(const unsigned& idag, const unsigned& ia_dag,
     const int& bphase_i, const unsigned& j, const unsigned& ja, 
     const int& bphase_j) const;
-  int apply_niup_nidn(const int& site_i) const;
+  int apply_ni_updn(const int& site_i) const;
   void get_grad_logpsi(RealVector& grad_logpsi) const;
   const int& num_updates(void) const { return num_mcsteps_ ; }
   const var::Wavefunction& wavefunc(void) const { return wf_; }

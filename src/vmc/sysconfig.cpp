@@ -184,10 +184,15 @@ int SysConfig::do_hopping_move(void)
       basis_.undo_last_move();
       return 0; 
     } 
-    auto weight_ratio = pf_ratio;
+    int delta_nd = basis_.delta_nd();
+    amplitude_t weight_ratio = pf_ratio * pj_.gw_ratio(delta_nd);
     double transition_proby = std::norm(weight_ratio);
     num_proposed_moves_[move_t::uphop]++;
     last_proposed_moves_++;
+    //std::cout << "delta_nd = " << delta_nd << "\n";
+    //std::cout << "gw_ratio = " << pj_.gw_ratio(delta_nd) << "\n";
+    //std::cout << "pf_ratio = " << pf_ratio << "\n";
+    //std::cout << "tr proby = " << transition_proby << "\n";
     if (basis_.rng().random_real()<transition_proby) {
       num_accepted_moves_[move_t::uphop]++;
       last_accepted_moves_++;
@@ -195,11 +200,14 @@ int SysConfig::do_hopping_move(void)
       basis_.commit_last_move();
       // update amplitudes
       inv_update_for_hop(spin,psi_row_,psi_col_,pf_ratio);
+      //std::cout << "--------ACCEPTED--------\n";
     }
     else {
       basis_.undo_last_move();
+      //std::cout << "--------NOT ACCEPTED--------\n";
     }
   } 
+  //getchar();
   return 0;
 }
 
@@ -363,7 +371,7 @@ int SysConfig::apply(const model::op::quantum_op& qn_op, const int& i) const
   }
 }
 
-int SysConfig::apply_niup_nidn(const int& site_i) const
+int SysConfig::apply_ni_updn(const int& site_i) const
 {
   return basis_.op_ni_updn(site_i);
 }
@@ -375,10 +383,15 @@ amplitude_t SysConfig::apply_upspin_hop(const int& src, const int& tgt,
   if (basis_.op_cdagc_up(src,tgt)) {
     int spin = basis_.which_spin();
     int to_state = basis_.which_state();
+    int delta_nd = basis_.delta_nd();
+    basis_.undo_last_move(); 
+    /* 
+      Necessary to 'undo', as next measurement could be 
+      'site diagonal' where no 'undo' is done 
+    */
     wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_.spin_states());
     // ratio of Pfaffians
     amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();
-    int delta_nd = basis_.delta_nd();
     amplitude_t ratio = ampl_part(std::conj(pf_ratio));
     return amplitude_t(bc_phase) * ratio * pj_.gw_ratio(delta_nd);
   }
@@ -394,10 +407,15 @@ amplitude_t SysConfig::apply_dnspin_hop(const int& src, const int& tgt,
   if (basis_.op_cdagc_dn(src,tgt)) {
     int spin = basis_.which_spin();
     int to_state = basis_.which_state();
+    int delta_nd = basis_.delta_nd();
+    basis_.undo_last_move();
+    /* 
+      Necessary to 'undo', as next measurement could be 
+      'site diagonal' where no 'undo' is done 
+    */
     wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_.spin_states());
     // ratio of Pfaffians
     amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();
-    int delta_nd = basis_.delta_nd();
     amplitude_t ratio = ampl_part(std::conj(pf_ratio));
     return amplitude_t(bc_phase) * ratio * pj_.gw_ratio(delta_nd);
   }
@@ -428,6 +446,7 @@ amplitude_t SysConfig::apply_sisj_plus(const int& site_i, const int& site_j) con
     int to_state = basis_.which_state();
     int spin2 = basis_.which_second_spin();
     int to_state2 = basis_.which_second_state();
+    basis_.undo_last_move();
     // ratio of Pfaffians
     wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_.spin_states());
     amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();

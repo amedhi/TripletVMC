@@ -57,6 +57,8 @@ void GroundState::set_particle_num(const input::Parameters& inputs)
     band_filling_ = static_cast<double>(n)/num_sites;
   }
   hole_doping_ = 1.0 - band_filling_;
+  //std::cout << "num_upspins_ = " << num_upspins_ << "\n"; 
+  //std::cout << "num_dnspins_ = " << num_dnspins_ << "\n"; 
 }
 
 double GroundState::get_noninteracting_mu(void)
@@ -76,12 +78,14 @@ double GroundState::get_noninteracting_mu(void)
   //for (unsigned i=0; i<num_upspins_; ++i) e += ek[i];
   //std::cout << "energy = " << 2*e/num_sites_ << "\n";
   //std::cout << "upspins = " << num_upspins_ << "\n";
+  double mu;
   if (num_spins_ < 2*num_sites_) {
     //std::cout << 0.5*(ek[num_upspins_-1]+ek[num_upspins_]) << "\n";
-    return 0.5*(ek[num_spins_-1]+ek[num_spins_]);
+    mu = 0.5*(ek[num_spins_-1]+ek[num_spins_]);
   }
-  else
-    return ek[num_spins_-1];
+  else mu = ek[num_spins_-1];
+  //std::cout << "mu_0 = " << mu << "\n";
+  return mu;
 }
 
 void GroundState::set_ft_matrix(const lattice::LatticeGraph& graph)
