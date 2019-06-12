@@ -8,6 +8,7 @@
 #ifndef SYSCONFIG_H
 #define SYSCONFIG_H
 
+#include <sstream>
 #include "../scheduler/worker.h"
 #include "../lattice/lattice.h"
 #include "../lattice/graph.h"
@@ -28,6 +29,7 @@ public:
   SysConfig(const input::Parameters& parms, const lattice::LatticeGraph& graph, 
     const model::Hamiltonian& model);
   ~SysConfig() {}
+  std::string info_str(void) const; 
   int build(const lattice::LatticeGraph& graph, const input::Parameters& inputs, 
     const bool& with_gradient=false);
   int build(const lattice::LatticeGraph& graph, const var::parm_vector& vparms, 

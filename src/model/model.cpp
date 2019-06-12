@@ -227,9 +227,9 @@ void Hamiltonian::set_info_string(const lattice::Lattice& L)
 {
   info_str_.clear();
   info_str_ << "# Lattice: " << L.name() << " (";
-  info_str_ << "Size="<<L.size1()<<"x"<<L.size2()<<"x"<< L.size3()<<", ";
-  info_str_ << "Sites/unitcell="<<L.num_basis_sites()<<", ";
-  info_str_ << "Boundary="<<static_cast<int>(L.bc1_periodicity()) << "-"; 
+  info_str_ << "Size = "<<L.size1()<<"x"<<L.size2()<<"x"<< L.size3()<<", ";
+  info_str_ << "Sites/unitcell = "<<L.num_basis_sites()<<", ";
+  info_str_ << "Boundary = "<<static_cast<int>(L.bc1_periodicity()) << "-"; 
   info_str_ << static_cast<int>(L.bc2_periodicity()) << "-";
   info_str_ << static_cast<int>(L.bc3_periodicity()) << ")\n";
   info_str_ << "# No of sites = " << L.num_sites() << "\n";

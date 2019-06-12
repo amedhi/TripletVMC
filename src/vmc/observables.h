@@ -24,8 +24,11 @@ class ObservableSet
 public:
   ObservableSet();
   ~ObservableSet() {}
-  void init(const input::Parameters& inputs, 
-    void (&print_copyright)(std::ostream& os), const lattice::LatticeGraph& graph, 
+  std::stringstream& headstream(void) { return headstream_; }
+  //void init(const input::Parameters& inputs, 
+  //  void (&print_copyright)(std::ostream& os), const lattice::LatticeGraph& graph, 
+  //  const model::Hamiltonian& model, const SysConfig& config);
+  void init(const input::Parameters& inputs, const lattice::LatticeGraph& graph, 
     const model::Hamiltonian& model, const SysConfig& config);
   void as_functions_of(const std::vector<std::string>& xvars=std::vector<std::string>());
   void as_functions_of(const std::string& xvar);

@@ -19,6 +19,7 @@ BCS_State::BCS_State(const bcs& order_type, const input::Parameters& inputs,
 int BCS_State::init(const bcs& order_type, const input::Parameters& inputs, 
   const lattice::LatticeGraph& graph)
 {
+  name_ = "BCS";
   // sites & bonds
   num_sites_ = graph.num_sites();
   num_bonds_ = graph.num_bonds();
@@ -37,6 +38,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
   using namespace model;
   model::CouplingConstant cc;
   if (order_type_==bcs::swave) {
+    order_name_ = "s-wave";
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
     mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
@@ -46,6 +48,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
     varparms_.add("delta_sc", defval=1.0, lb=0.0, ub=2.0);
   }
   else if (order_type_==bcs::dwave) {
+    order_name_ = "d-wave";
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
     mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
@@ -56,6 +59,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
     varparms_.add("delta_sc", defval=1.0, lb=0.0, ub=2.0);
   }
   else if (order_type_==bcs::pwave) {
+    order_name_ = "p-wave";
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="delta_00", defval=1.0, inputs);
     mf_model_.add_parameter(name="delta_uu", defval=0.0, inputs);
@@ -73,6 +77,35 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
     varparms_.add("delta_uu", defval=1.0, lb=0.0, ub=2.0);
     varparms_.add("delta_ud", defval=1.0, lb=0.0, ub=2.0);
     varparms_.add("delta_dd", defval=1.0, lb=0.0, ub=2.0);
+  }
+  else if (order_type_==bcs::p_plus_ip) {
+    if (graph.lattice().id()==lattice::lattice_id::HONEYCOMB) {
+      order_name_ = "p+ip";
+      mf_model_.add_parameter(name="t", defval=1.0, inputs);
+      mf_model_.add_parameter(name="delta_uu", defval=0.0, inputs);
+      mf_model_.add_parameter(name="delta_ud", defval=0.0, inputs);
+      mf_model_.add_parameter(name="delta_dd", defval=0.0, inputs);
+      mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
+      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+      // pairing term
+      double theta = 2.0*pi()/3.0;
+      double theta2 = 4.0*pi()/3.0;
+      mf_model_.add_constant("theta",theta);
+      mf_model_.add_constant("theta2",theta2);
+      cc = CouplingConstant({0,"delta_uu"}, {1,"i * theta*delta_uu"}, {2,"i * theta2*delta_uu"});
+      mf_model_.add_bondterm(name="pairing", cc, op::create_triplet_uu());
+      //cc = CouplingConstant({0,"delta_ud"}, {1,"i*theta*delta_ud"}, {2,"i*theta2*delta_ud"});
+      mf_model_.add_bondterm(name="pairing", cc, op::create_triplet_ud());
+      //cc = CouplingConstant({0,"delta_dd"}, {1,"i*theta*delta_dd"}, {2,"i*theta2*delta_dd"});
+      mf_model_.add_bondterm(name="pairing", cc, op::create_triplet_dd());
+      // variational parameters
+      varparms_.add("delta_uu", defval=1.0, lb=0.0, ub=2.0);
+      varparms_.add("delta_ud", defval=1.0, lb=0.0, ub=2.0);
+      varparms_.add("delta_dd", defval=1.0, lb=0.0, ub=2.0);
+    }
+    else {
+      throw std::range_error("BCS_State::BCS_State: not defined for this lattice");
+    }
   }
   else {
     throw std::range_error("BCS_State::BCS_State: unidefined bcs order");
@@ -108,9 +141,24 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
   work_k_.resize(num_kpoints_);
   for (int k=0; k<num_kpoints_; ++k) {
     phi_k_[k].resize(dim2_,dim2_);
-    work_k_[k].resize(kblock_dim_,kblock_dim_);
+    work_k_[k].resize(dim2_,dim2_);
   } 
   return 0;
+}
+
+std::string BCS_State::info_str(void) const
+{
+  std::ostringstream info;
+  info << "# Ground State: '"<<name_<<" ("<<order_name_<<")'\n";
+  info << "# Hole doping = "<<hole_doping()<<"\n";
+  info << "# Particles = "<<num_spins();
+  info << " (Nup = "<<num_upspins()<<", Ndn="<<num_dnspins()<<")\n";
+  info.precision(6);
+  info.setf(std::ios_base::fixed);
+  if (noninteracting_mu_)
+    info << "# mu = non-interacting value\n";
+  else info << "# mu = "<<mf_model_.get_parameter_value("mu")<<"\n";
+  return info.str();
 }
 
 void BCS_State::update(const input::Parameters& inputs)
@@ -163,7 +211,7 @@ void BCS_State::get_wf_amplitudes(Matrix& psi)
 
 void BCS_State::get_wf_gradient(std::vector<Matrix>& psi_gradient) 
 {
-  unsigned i=0; 
+  int i=0; 
   for (const auto& p : varparms_) {
     double h = p.diff_h();
     double inv_2h = 0.5/h;
@@ -179,7 +227,7 @@ void BCS_State::get_wf_gradient(std::vector<Matrix>& psi_gradient)
     // model to original state
     mf_model_.update_parameter(p.name(), x);
     mf_model_.update_terms();
-    for (unsigned k=0; k<num_kpoints_; ++k) {
+    for (int k=0; k<num_kpoints_; ++k) {
       phi_k_[k] -= work_k_[k];
       phi_k_[k] *= inv_2h;
     }

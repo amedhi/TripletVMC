@@ -27,10 +27,11 @@ VMC::VMC(const input::Parameters& inputs)
   check_interval_ = std::max(1,num_measure_steps_/10);
 
   // observables
-  observables.init(inputs,copyright_msg,graph,model,config);
+  make_info_str(inputs);
+  observables.headstream() << info_str_.str();
+  observables.init(inputs,graph,model,config);
   observables.as_functions_of("x");
 }
-
 
 int VMC::start(const input::Parameters& inputs, const run_mode& mode, 
   const bool& silent)
@@ -154,6 +155,19 @@ void VMC::print_progress(const int& num_measurement, const int& num_measure_step
 {
   if (num_measurement%check_interval_==0)
   std::cout<<" measurement = "<< double(100.0*num_measurement)/num_measure_steps<<" %\n";
+}
+
+void VMC::make_info_str(const input::Parameters& inputs)
+{
+  info_str_.clear();
+  copyright_msg(info_str_);
+  info_str_ << "# "<< inputs.job_id() <<"\n"; 
+  info_str_ << model.info_str(); 
+  info_str_ << config.info_str(); 
+  info_str_ << "# Samples = " << num_measure_steps_;
+  info_str_ << ", warmup = " << num_warmup_steps_;
+  info_str_ << ", min_interval = " << min_interval_;
+  info_str_ << ", max_interval = " << max_interval_ << "\n";
 }
 
 void VMC::copyright_msg(std::ostream& os)

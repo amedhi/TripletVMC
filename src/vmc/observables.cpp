@@ -16,9 +16,12 @@ ObservableSet::ObservableSet()
 {
 }
 
+//void ObservableSet::init(const input::Parameters& inputs, 
+//    void (&print_copyright)(std::ostream& os), const lattice::LatticeGraph& graph, 
+//    const model::Hamiltonian& model, const SysConfig& config)
 void ObservableSet::init(const input::Parameters& inputs, 
-    void (&print_copyright)(std::ostream& os), const lattice::LatticeGraph& graph, 
-    const model::Hamiltonian& model, const SysConfig& config)
+  const lattice::LatticeGraph& graph, const model::Hamiltonian& model, 
+  const SysConfig& config)
 {
   // file open mode
   std::string mode = inputs.set_value("mode", "NEW");
@@ -28,8 +31,8 @@ void ObservableSet::init(const input::Parameters& inputs,
   // check which observables to calculate
   //for (auto& obs : *this) obs.get().check_on(inputs, replace_mode_);
   // heading message
-  print_copyright(headstream_);
-  model.print_info(headstream_);
+  //print_copyright(headstream_);
+  //model.print_info(headstream_);
   num_xvars_ = 0; 
 
   // switch on required observables

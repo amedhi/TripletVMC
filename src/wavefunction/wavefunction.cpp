@@ -27,6 +27,9 @@ Wavefunction::Wavefunction(const lattice::LatticeGraph& graph,
   else if (name_ == "DWAVE_SC") {
     groundstate_.reset(new BCS_State(bcs::dwave,inputs,graph));
   }
+  else if (name_ == "SC_P+IP") {
+    groundstate_.reset(new BCS_State(bcs::p_plus_ip,inputs,graph));
+  }
   else {
     throw std::range_error("Wavefunction::Wavefunction: unidefined wavefunction");
   }
@@ -121,13 +124,17 @@ void Wavefunction::get_amplitudes(amplitude_t& elem, const int& irow,
 }
 
 void Wavefunction::get_gradients(Matrix& psi_grad, const int& n, 
-  const std::vector<int>& row, const std::vector<int>& col) const
+  const std::vector<int>& spin_states) const
 {
   if (!have_gradient_) 
     throw std::logic_error("Wavefunction::get_gradients: gradients were not computed");
-  for (int i=0; i<row.size(); ++i)
-    for (int j=0; j<col.size(); ++j)
-      psi_grad(i,j) = psi_gradient_[n](row[i],col[j]);
+
+  for (int i=0; i<spin_states.size(); ++i) {
+    for (int j=i; j<spin_states.size(); ++j) {
+      psi_grad(i,j) = psi_gradient_[n](spin_states[i], spin_states[j]);
+      psi_grad(j,i) = -psi_grad(i,j);
+    }
+  }
 }
 
 void Wavefunction::get_vparm_names(std::vector<std::string>& vparm_names, 

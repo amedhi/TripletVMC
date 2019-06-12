@@ -28,6 +28,7 @@ public:
   virtual ~VMC() {}
   int start(const input::Parameters& inputs, const run_mode& mode=run_mode::normal, 
     const bool& silent=false);
+  std::string info_str(void) const { return info_str_.str(); } 
   int run_simulation(const int& sample_size=-1);
   int run_simulation(const Eigen::VectorXd& varp);
   double energy_function(const Eigen::VectorXd& varp, Eigen::VectorXd& grad);
@@ -70,6 +71,9 @@ private:
   int check_interval_{0};
   bool silent_mode_{false};
 
+  mutable std::ostringstream info_str_;
+
+  void make_info_str(const input::Parameters& inputs);
   void print_progress(const int& num_measurement, const int& num_measure_steps) const;
 };
 

@@ -6,7 +6,7 @@
 # Job Specification 
 #---------------------------------------------
 job = "VMC Simulation" 
-optimizing_run = "NO" 
+optimizing_run = "YES" 
 mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
 
@@ -14,8 +14,8 @@ print_level = -2 #-2
 # Lattice:
 #---------------------------------------------
 lattice = "SQUARE" 
-lsize1 = 10
-lsize2 = 10
+lsize1 = 4
+lsize2 = 4
 bc1 = "periodic"
 bc2 = "antiperiodic"
 
@@ -32,10 +32,10 @@ U = 8.0
 wavefunction = "DWAVE_SC"
 gutzwiller_proj = "YES"
 hole_doping = 0.16
-gfactor = 0.3037 
-delta_sc = 0.08 
+gfactor = 1.0 # 0.3037 
+delta_sc = 1.0 # 0.38  # 0.08
 mu = -0.4263  # -0.89 
-#mu_variational = "YES"
+mu_variational = "YES"
 
 #---------------------------------------------
 # List of observable to calculate:
@@ -47,16 +47,16 @@ Magnetization = "No"
 #---------------------------------------------
 # Monte Carlo parameters
 #---------------------------------------------
-rng_seed = 1  # (=0 No seed, >0 time_seed)
-measure_steps = 100000
-warmup_steps = 10000
+rng_seed = 0  # (=0 No seed, >0 time_seed)
+measure_steps = 5000
+warmup_steps = 5000
 min_interval = 3
 max_interval = 20
 
 #---------------------------------------------
 # Optimization parameters
 #---------------------------------------------
-num_opt_samples = 10
+num_opt_samples = 3
 sr_max_iter = 500
 sr_start_tstep = 0.08
 sr_series_len = 50

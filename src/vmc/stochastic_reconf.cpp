@@ -28,7 +28,7 @@ int StochasticReconf::init(const input::Parameters& inputs, const VMC& vmc)
   // optimization parameters
   int nowarn;
   num_sim_samples_ = inputs.set_value("sr_measure_steps", 1000, nowarn);
-  num_opt_samples_ = inputs.set_value("sr_opt_samples", 30, nowarn);
+  num_opt_samples_ = inputs.set_value("num_opt_samples", 30, nowarn);
   max_iter_ = inputs.set_value("sr_max_iter", 500, nowarn);
   start_tstep_ = inputs.set_value("sr_start_tstep", 0.05, nowarn);
   mk_series_len_ = inputs.set_value("sr_series_len", 40, nowarn);
@@ -49,21 +49,22 @@ int StochasticReconf::init(const input::Parameters& inputs, const VMC& vmc)
   boost::to_upper(mode);
   bool replace_mode = true;
   if (mode=="APPEND") replace_mode = false;
-  optimal_parms_.init("OptParams", replace_mode);
+  optimal_parms_.init("optimal_vparms", replace_mode);
   optimal_parms_.resize(vmc.num_varp(), vmc.varp_names());
+  optimal_parms_.switch_on();
   // observable file header
-  std::stringstream heading;
-  vmc.copyright_msg(heading);
-  vmc.print_info(heading);
+  //td::stringstream heading;
+  //mc.copyright_msg(heading);
+  //mc.print_info(heading);
   std::vector<std::string> as_funct_of{"x"};
-  optimal_parms_.print_heading(heading.rdbuf()->str(), as_funct_of);
+  //optimal_parms_.print_heading(heading.rdbuf()->str(), as_funct_of);
+  optimal_parms_.print_heading(vmc.info_str(), as_funct_of);
   // progress file
   if (print_log_) {
     logfile_.open("log_optimization.txt");
     if (!logfile_.is_open())
       throw std::runtime_error("StochasticReconf::init: file open failed");
-    vmc.copyright_msg(logfile_);
-    vmc.print_info(logfile_);
+    logfile_ << vmc.info_str();
     logfile_ << "#" << std::string(72, '-') << std::endl;
     logfile_ << "Stochastic Reconfiguration" << std::endl;
     logfile_ << "max_iter = " << max_iter_ << std::endl;
@@ -98,11 +99,11 @@ int StochasticReconf::optimize(VMC& vmc)
     //std::cout << " optimal sample = " << n << "\n";
     if (print_log_) {
       logfile_ << "Starting sample " << n << " of " 
-        << num_opt_samples_ << " ... " << std::flush;
+        << num_opt_samples_ << " ...\n" << std::flush;
     }
     if (print_progress_) {
       std::cout << "Starting sample " << n << " of " 
-        << num_opt_samples_ << " ... " << std::flush;
+        << num_opt_samples_ << " ...\n" << std::flush;
     }
     // starting value of variational parameters
     vparms_ = vmc.varp_values();

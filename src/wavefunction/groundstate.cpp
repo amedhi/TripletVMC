@@ -30,6 +30,11 @@ void GroundState::get_wf_gradient(std::vector<Matrix>& psi_gradient)
   throw std::runtime_error("GroundState::get_wf_gradients: function must be overriden");
 }
 
+std::string GroundState::info_str(void) const
+{
+  throw std::runtime_error("GroundState::info_str: function must be overriden");
+}
+
 void GroundState::set_particle_num(const input::Parameters& inputs)
 {
   hole_doping_ = inputs.set_value("hole_doping", 0.0);

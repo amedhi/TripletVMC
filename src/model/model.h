@@ -90,6 +90,7 @@ public:
     { return site_terms_.size()+bond_terms_.size()+disorder_terms_.size(); }
   void get_term_names(std::vector<std::string>& term_names) const;
   std::string signature_str(void) const { return signature_str_.str(); }
+  std::string info_str(void) const { return info_str_.str(); }
   std::ostream& print_info(std::ostream& os) const { return os << info_str_.str(); }
   //const BondTerm::BondSiteMap& bond_sites_map(void) const { return bond_sites_map_; }
 

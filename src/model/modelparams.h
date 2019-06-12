@@ -27,6 +27,17 @@ public:
 private:
 };
 
+class ModelConstants : public std::unordered_map<std::string,std::complex<double>>
+{
+public:
+  using super_type = std::unordered_map<std::string,std::complex<double>>;
+  using iterator = super_type::iterator;
+  using const_iterator = super_type::const_iterator;
+  ModelConstants() {}
+  ~ModelConstants() {}
+private:
+};
+
 } // end namespace model
 
 #endif

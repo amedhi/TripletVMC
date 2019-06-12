@@ -22,6 +22,8 @@ SysConfig::SysConfig(const input::Parameters& inputs,
   num_wf_parms_ = wf_.varparms().size();
   num_varparms_ = (num_pj_parms_ + num_wf_parms_);
   vparm_names_.resize(num_varparms_);
+  vparm_values_.resize(num_varparms_);
+  vparm_vector_.resize(num_varparms_);
   vparm_lbound_.resize(num_varparms_);
   vparm_ubound_.resize(num_varparms_);
   // names
@@ -38,7 +40,6 @@ SysConfig::SysConfig(const input::Parameters& inputs,
 const var::parm_vector& SysConfig::vparm_values(void) 
 {
   // values as 'var::parm_vector'
-  vparm_values_.resize(num_varparms_);
   pj_.get_vparm_values(vparm_values_,0);
   wf_.get_vparm_values(vparm_values_,num_pj_parms_);
   return vparm_values_;
@@ -47,10 +48,23 @@ const var::parm_vector& SysConfig::vparm_values(void)
 const std::vector<double>& SysConfig::vparm_vector(void) 
 {
   // values as 'std::double'
-  vparm_vector_.resize(num_varparms_);
   pj_.get_vparm_vector(vparm_vector_,0);
   wf_.get_vparm_vector(vparm_vector_,num_pj_parms_);
   return vparm_vector_;
+}
+
+std::string SysConfig::info_str(void) const
+{
+  std::ostringstream info;
+  info << wf_.info_str();
+  info.precision(6);
+  info.setf(std::ios_base::fixed);
+  info << "# Variational parameters:\n";
+  for (const auto& v : wf_.varparms()) 
+    info << "# " << v.name() << " = " << v.value() << "\n";
+  for (const auto& v : pj_.varparms()) 
+    info << "# " << v.name() << " = " << v.value() << "\n";
+  return info.str();
 }
 
 int SysConfig::build(const lattice::LatticeGraph& graph, const input::Parameters& inputs,
@@ -446,7 +460,6 @@ amplitude_t SysConfig::apply_sisj_plus(const int& site_i, const int& site_j) con
     int to_state = basis_.which_state();
     int spin2 = basis_.which_second_spin();
     int to_state2 = basis_.which_second_state();
-    basis_.undo_last_move();
     // ratio of Pfaffians
     wf_.get_amplitudes(psi_row_,psi_col_,spin,to_state,basis_.spin_states());
     amplitude_t pf_ratio = psi_row_.cwiseProduct(psi_inv_.col(spin)).sum();
@@ -486,6 +499,7 @@ amplitude_t SysConfig::apply_sisj_plus(const int& site_i, const int& site_j) con
     amplitude_t pf_ratio2 = psi_row2_.cwiseProduct(inv_col_).sum();
     basis_.undo_exchange_first_move();
     amplitude_t net_ratio = ampl_part(std::conj(pf_ratio*pf_ratio2));
+    basis_.undo_last_move(); // this step necessary
     return -0.5*net_ratio + amplitude_t(ninj_term);
   }
   else {
@@ -628,11 +642,11 @@ void SysConfig::get_grad_logpsi(RealVector& grad_logpsi) const
     }
   }
   // grad_logpsi wrt wf_ parameters
-  /*
   for (int n=0; n<wf_.varparms().size(); ++n) {
-    wf_.get_gradients(psi_grad_,n,basis_.upspin_sites(), basis_.dnspin_sites());
+    //wf_.get_amplitudes(psi_mat_,basis_.spin_states());
+    wf_.get_gradients(psi_grad_,n,basis_.spin_states());
     grad_logpsi(p+n) = std::real(psi_grad_.cwiseProduct(psi_inv_.transpose()).sum());
-  }*/
+  }
 }
 
 double SysConfig::accept_ratio(void)

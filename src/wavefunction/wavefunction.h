@@ -9,7 +9,6 @@
 #define WAVEFUNCTION_H
 
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <complex>
 #include <vector>
@@ -35,6 +34,7 @@ public:
   Wavefunction(const lattice::LatticeGraph& graph, const input::Parameters& inputs);
   ~Wavefunction() {}
   const VariationalParms& varparms(void) const { return groundstate_->varparms(); }
+  std::string info_str(void) const { return groundstate_->info_str(); } 
   int compute(const lattice::LatticeGraph& graph, const input::Parameters& inputs, 
     const bool& psi_gradient=false);
   int compute(const lattice::LatticeGraph& graph, const var::parm_vector& pvector,
@@ -58,7 +58,7 @@ public:
     const int& icol) const;
   void get_amplitudes(amplitude_t& elem, const int& irow, const int& jcol) const;
   void get_gradients(Matrix& psi_grad, const int& n, 
-    const std::vector<int>& row, const std::vector<int>& col) const;
+    const std::vector<int>& spin_states) const;
 private:
   std::unique_ptr<GroundState> groundstate_;
   //wf_descriptor wf_;
@@ -67,7 +67,7 @@ private:
   //wf_type type_;
   int num_sites_;
   int num_states_;
-  // BCS_state bcs_state_;
+
   // FS_state fermisea_;
   Matrix psi_up_;
   Matrix psi_dn_;

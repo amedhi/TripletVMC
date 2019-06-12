@@ -87,6 +87,7 @@ HDRS=    scheduler/mpi_comm.h \
 #	 montecarlo/observable_operator.h montecarlo/simulator.h \
 	 simulation.h
 VMC_HDRS = $(addprefix src/,$(HDRS))
+MUPARSER_LIB = $(PROJECT_ROOT)/src/expression/muparserx/libmuparserx.a
 #-------------------------------------------------------------
 # Target
 TAGT=a.out
@@ -108,8 +109,8 @@ DEPS=$(patsubst %.o,%.d,$(OBJS))
 .PHONY: all
 all: $(TAGT) #$(INCL_HDRS)
 
-$(TAGT): $(OBJS)
-	$(VMC_CXX) -o $(TAGT) $(OBJS) $(VMC_LDFLAGS) $(VMC_LIBS)  
+$(TAGT): $(OBJS) $(MUPARSER_LIB)
+	$(VMC_CXX) -o $(TAGT) $(OBJS) $(VMC_LDFLAGS) $(VMC_LIBS)  $(MUPARSER_LIB)
 
 %.o: %.cpp
 	$(VMC_CXX) -c $(VMC_CXXFLAGS) -o $@ $<
@@ -126,6 +127,9 @@ $(VMC_INCLDIR)/%.h: %.h
 	@mkdir -p $(@D)
 	@echo "Copying $< to 'include'" 
 	@cp -f $< $@
+
+$(MUPARSER_LIB):
+	@cd ./src/expression/muparserx/ && $(MAKE)
 
 # installation
 #prefix = ../install#/usr/local

@@ -623,33 +623,6 @@ void FockBasis::commit_last_move(void)
       break;
   }
   // check
-  /*
-  int nd = 0;
-  for (int i=0; i<num_sites_; ++i) {
-    std::cout << "i, n ="<<i<<"   "<<op_ni_updn(i)<<"\n";
-    nd += op_ni_updn(i);
-  }
-  std::cout << "occu_n[3] = "<< occu_n_[3] << "\n";
-  std::cout << "occu_n[3+num_sites_] = "<< occu_n_[3+num_sites_] << "\n";
-  std::cout << "spin_id[3] = "<< spin_id_[3] << "\n";
-  std::cout << "spin_id[3+num_sites_] ="<< spin_id_[3+num_sites_] << "\n";
-
-  //if (nd != num_dblocc_sites_) {
-    std::cout << "num_dblocc_sites = " << num_dblocc_sites_ << "\n"; 
-    std::cout << "nd = " << nd << "\n"; 
-    std::cout << "-------------------------------------\n\n"; 
-  //  getchar();
-  //}
-  */
-  /*int spin_count = 0;
-  for (int i=0; i<num_states_; ++i) spin_count += occu_n_[i];
-  if (num_spins_!=spin_count || num_holes_!= num_states_-spin_count ) {
-    throw std::logic_error("FockBasis::commit_last_move");
-  }*/
-  //for (int i=0; i<num_states_; ++i) {
-  //  std::cout<<i<<": "<<occu_n_[i]<<"  "<<spin_id_[i]<< "\n";
-  //}
-  //getchar();
   //std::cout << "n_up, n_dn = " << num_upspins_ << "  " << num_dnspins_ << "\n";
   //std::cout << "total, counted = " << num_spins_ << "  " << spin_count << "\n";
   //std::cout << "holes, counted = " << num_holes_ << "  " << num_states_-spin_count << "\n";

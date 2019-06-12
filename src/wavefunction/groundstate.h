@@ -9,6 +9,7 @@
 #define GROUNDSTATE_H
 
 #include <vector>
+#include <sstream>
 #include <Eigen/Eigenvalues>
 #include "../scheduler/task.h"
 #include "./mf_model.h"
@@ -26,13 +27,16 @@ public:
   virtual void update(const var::parm_vector& pvector, const unsigned& start_pos=0);
   virtual void get_wf_amplitudes(Matrix& psi);
   virtual void get_wf_gradient(std::vector<Matrix>& psi_gradient); 
+  virtual std::string info_str(void) const; 
   const VariationalParms& varparms(void) { return varparms_; }
   const int & num_varparms(void) const { return num_varparms_; }
   const bool& pairing_type(void) const { return pairing_type_; }
   const int & num_upspins(void) const { return num_upspins_; }
   const int & num_dnspins(void) const { return num_dnspins_; }
+  const int & num_spins(void) const { return num_spins_; }
   const double& hole_doping(void) const { return hole_doping_; }
 protected:
+  std::string name_;
   int num_sites_{0};
   int num_bonds_{0};
   int num_states_{0};
