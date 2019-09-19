@@ -128,8 +128,35 @@ void HamiltonianTerm::construct(const std::string& name, const op::quantum_op& o
 
 void HamiltonianTerm::eval_coupling_constant(const ModelParams& cvals, const ModelParams& pvals)
 {
-  expr::Expression expr;
-  expr::Expression::variables vars;
+  expr::ComplexExpr expr;
+  //expr::Expression expr;
+  //expr::Expression::variables vars;
+  for (const auto& c : cvals) expr.add_var(c.first, c.second);
+  for (const auto& p : pvals) expr.add_var(p.first, p.second);
+  try { 
+    // if the 'cc' is implicitly defined for all types 
+    if (cc_.size()==1 && cc_.begin()->first==CouplingConstant::global_type) {
+      std::string cc_expr(cc_.begin()->second);
+      if (cc_expr[0]=='+') cc_expr.erase(0,1);
+      expr.set_expr(cc_expr);
+      ccval_t val = expr.evaluate();
+      for (auto& v : cc_values_) v = val;
+    }
+    else {
+      for (const auto& p : cc_) {
+        std::string cc_expr(p.second);
+        if (cc_expr[0]=='+') cc_expr.erase(0,1);
+        expr.set_expr(cc_expr);
+        cc_values_[p.first] = expr.evaluate();
+      }
+    }
+  }
+  catch (std::exception& e) 
+  { 
+    std::string msg = "BondOperatorTerm::evaluate_coupling_constant:\n" + std::string(e.what());
+    throw std::runtime_error(msg);
+  }
+  /*
   for (const auto& c : cvals) vars[c.first] = c.second;
   for (const auto& p : pvals) vars[p.first] = p.second;
   try { 
@@ -148,6 +175,7 @@ void HamiltonianTerm::eval_coupling_constant(const ModelParams& cvals, const Mod
     std::string msg = "BondOperatorTerm::evaluate_coupling_constant:\n" + std::string(e.what());
     throw std::runtime_error(msg);
   }
+  */
 }
 
 

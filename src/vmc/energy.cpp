@@ -87,7 +87,7 @@ void Energy::measure(const lattice::LatticeGraph& graph,
       // special treatment for hubbard
       if (it->qn_operator().id()==op_id::niup_nidn) {
         for (unsigned stype=0; stype<graph.num_site_types(); ++stype) {
-          config_value_(n+i) += std::real(it->coupling(stype)*hubbard_nd(stype));
+          config_value_(n+i) += std::real(it->coupling(stype))*hubbard_nd(stype);
         }
       }
       else {

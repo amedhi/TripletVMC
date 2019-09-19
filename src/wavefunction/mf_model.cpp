@@ -7,7 +7,8 @@
 *----------------------------------------------------------------------------*/
 #include "mf_model.h"
 #include <boost/algorithm/string.hpp>
-#include "../expression/expression.h"
+//#include "../expression/expression.h"
+#include "../expression/complex_expression.h"
 //#include "../xml/pugixml.hpp"
 
 namespace var {
@@ -108,9 +109,9 @@ void MF_Model::construct_kspace_block(const Vector3d& kvec)
       if (term.qn_operator().is_pairing()) {
         //----------------PAIRING terms--------------
         /* 
-          In the paring term, sum over 'delta' should include all 
+          in the paring term, sum over 'delta' should include all 
           the nearest neighbours, which is effectively obtained
-          by adding the 'adjoint' term. The factor of 0.5 is taken
+          by adding the 'adjoint' term. the factor of 0.5 is taken
           as a convention.
         */
         work2_ = 0.5*(work_+work_.adjoint());
@@ -278,20 +279,19 @@ void UnitcellTerm::build_siteterm(const model::HamiltonianTerm& hamterm,
 
 void UnitcellTerm::eval_coupling_constant(const model::ModelParams& pvals, const model::ModelParams& cvals)
 {
-  expr::Expression expr;
-  expr::Expression::variables vars;
-  for (const auto& p : pvals) {
-    vars[p.first] = p.second;
-    //std::cout << p.first << " = " << p.second << "\n"; getchar();
-  }
-  for (const auto& c : cvals) vars[c.first] = c.second;
+  expr::ComplexExpr expr;
+  for (const auto& p : pvals) expr.add_var(p.first, p.second);
+  for (const auto& c : cvals) expr.add_var(c.first, c.second);
   try { 
     for (int n=0; n<num_out_bonds_; ++n) {
       for (int i=0; i<dim_; ++i) {
         for (int j=0; j<dim_; ++j) {
           std::string cc_expr(expr_matrices_[n][i][j]);
+          // strip '+' sign, if any, in the first character (bug in muparserx)
+          if (cc_expr[0]=='+') cc_expr.erase(0,1);
           if (cc_expr.size()>0) {
-            coeff_matrices_[n](i,j) = expr.evaluate(cc_expr, vars); 
+            expr.set_expr(cc_expr);
+            coeff_matrices_[n](i,j) = expr.evaluate(); 
             //std::cout << "cc = " << coeff_matrices_[n](i,j) << "\n"; getchar();
           }
           else

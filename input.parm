@@ -6,7 +6,7 @@
 # Job Specification 
 #---------------------------------------------
 job = "VMC Simulation" 
-optimizing_run = "YES" 
+optimizing_run = "NO" 
 mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
 

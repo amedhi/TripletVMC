@@ -170,7 +170,6 @@ int Hamiltonian::finalize(const lattice::Lattice& L)
   // disorder terms
   dterm_begin_ = disorder_terms_.cbegin();
   dterm_end_ = disorder_terms_.cend();
-
   // info string
   set_info_string(L);
   return 0;

@@ -13,10 +13,11 @@ SRCS+= scheduler/worker.cpp
 SRCS+= scheduler/master_scheduler.cpp
 SRCS+= scheduler/scheduler.cpp
 #SRCS+= xml/pugixml.cpp 
-SRCS+= expression/expression.cpp 
-SRCS+= expression/tokens.cpp 
-SRCS+= expression/functions.cpp
-SRCS+= expression/objects.cpp
+#SRCS+= expression/expression.cpp 
+#SRCS+= expression/tokens.cpp 
+#SRCS+= expression/functions.cpp
+#SRCS+= expression/objects.cpp
+SRCS+= expression/complex_expression.cpp
 SRCS+= utils/utils.cpp 
 SRCS+= lattice/lattice.cpp
 SRCS+= lattice/latticelibrary.cpp
@@ -53,9 +54,7 @@ HDRS=    scheduler/mpi_comm.h \
          scheduler/optionparser.h scheduler/cmdargs.h \
          scheduler/inputparams.h scheduler/worker.h scheduler/task.h \
          scheduler/scheduler.h \
-         expression/expression.h expression/shunting_yard.h \
-         expression/tokens.h expression/functions.h expression/objects.h \
-         expression/pack.h \
+         expression/complex_expression.h \
          utils/utils.h \
          lattice/constants.h lattice/lattice.h lattice/graph.h \
 	 montecarlo/simulator.h \

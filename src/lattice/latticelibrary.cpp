@@ -65,6 +65,26 @@ int Lattice::define_lattice(void)
     add_bond(type=0, ngb=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
   }
 
+  else if (lname == "TBG") {
+    // type
+    lid = lattice_id::TBG;
+    // basis vectors
+    double x = 0.5; 
+    double y = 0.5*std::sqrt(3.0); 
+    set_basis_vectors(a1=vec(1,0,0), a2=vec(x,y,0), a3=vec(0,0,0));
+    // sites
+    add_basis_site(type=0, coord=vec(0,0,0));
+    add_basis_site(type=1, coord=vec(0,0,0));
+
+    // bonds
+    add_bond(type=0, ngb=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+    add_bond(type=1, ngb=1, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(1,0,0));
+    add_bond(type=0, ngb=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+    add_bond(type=1, ngb=1, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,1,0));
+    add_bond(type=0, ngb=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(-1,1,0));
+    add_bond(type=1, ngb=1, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(-1,1,0));
+  }
+
   else if (lname == "HONEYCOMB") {
     // type
     lid = lattice_id::HONEYCOMB;

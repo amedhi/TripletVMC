@@ -16,8 +16,8 @@
 #include "modelparams.h"
 #include "quantum_op.h"
 #include "../lattice/lattice.h"
-#include "../expression/expression.h"
-//#include "../expression/complex_expression.h"
+//#include "../expression/expression.h"
+#include "../expression/complex_expression.h"
 
 namespace model {
 
@@ -63,6 +63,7 @@ private:
 class HamiltonianTerm 
 {
 public:
+  using ccval_t = std::complex<double>;
   //using BondSiteMap = std::map<unsigned, std::pair<unsigned, unsigned> >;
   HamiltonianTerm() {}
   HamiltonianTerm(const std::string& name, const op::quantum_op& op, const CouplingConstant& cc, 
@@ -74,7 +75,7 @@ public:
   const op::quantum_op& qn_operator(void) const { return op_; }
   bool is_defined_for(const unsigned& operand_type) const 
     { return is_defined_[operand_type]; }
-  const double& coupling(const unsigned& operand_type) const
+  const ccval_t& coupling(const unsigned& operand_type) const
     { return cc_values_[operand_type]; }
   const std::string& coupling_expr(const unsigned& operand_type) const
     { return cc_.at(operand_type); }
@@ -85,7 +86,7 @@ private:
   CouplingConstant cc_;
   unsigned max_operand_types_;
   std::vector<bool> is_defined_; // operator defined for a given operand 'type'
-  std::vector<double> cc_values_;
+  std::vector<ccval_t> cc_values_;
 };
 
 

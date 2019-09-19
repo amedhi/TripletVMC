@@ -111,7 +111,7 @@ int VMC::run_simulation(const Eigen::VectorXd& varp)
 int VMC::run_simulation(const int& sample_size)
 {
   // warmup run
-  if (!silent_mode_) std::cout << " warming up... ";
+  if (!silent_mode_) std::cout << "warming up... " << std::flush;
   for (int n=0; n<num_warmup_steps_; ++n) config.update_state();
   if (!silent_mode_) std::cout << "done\n";
   // measuring run

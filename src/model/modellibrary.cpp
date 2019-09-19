@@ -40,6 +40,17 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
     add_siteterm(name="hubbard", cc="U", op::hubbard_int());
   }
 
+  else if (model_name == "TBG_MODEL") {
+    mid = model_id::TBG_MODEL;
+    // model parameters
+    add_parameter(name="t", defval=1.0, inputs);
+    add_parameter(name="U", defval=0.0, inputs);
+    // bond operator terms
+    cc = CouplingConstant({0,"-t"}, {1,"0"});
+    add_bondterm(name="hopping", cc="-t", op::spin_hop());
+    add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+  }
+
   else if (model_name == "TJ") {
     mid = model_id::TJ;
     int nowarn;

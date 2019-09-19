@@ -89,14 +89,14 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
       mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
       // pairing term
       double theta = 2.0*pi()/3.0;
-      double theta2 = 4.0*pi()/3.0;
+      double theta2 = 2.0*theta;
       mf_model_.add_constant("theta",theta);
       mf_model_.add_constant("theta2",theta2);
-      cc = CouplingConstant({0,"delta_uu"}, {1,"i * theta*delta_uu"}, {2,"i * theta2*delta_uu"});
+      cc = CouplingConstant({0,"delta_uu"}, {1,"i*theta*delta_uu"}, {2,"i*theta2*delta_uu"});
       mf_model_.add_bondterm(name="pairing", cc, op::create_triplet_uu());
-      //cc = CouplingConstant({0,"delta_ud"}, {1,"i*theta*delta_ud"}, {2,"i*theta2*delta_ud"});
+      cc = CouplingConstant({0,"delta_ud"}, {1,"i*theta*delta_ud"}, {2,"i*theta2*delta_ud"});
       mf_model_.add_bondterm(name="pairing", cc, op::create_triplet_ud());
-      //cc = CouplingConstant({0,"delta_dd"}, {1,"i*theta*delta_dd"}, {2,"i*theta2*delta_dd"});
+      cc = CouplingConstant({0,"delta_dd"}, {1,"i*theta*delta_dd"}, {2,"i*theta2*delta_dd"});
       mf_model_.add_bondterm(name="pairing", cc, op::create_triplet_dd());
       // variational parameters
       varparms_.add("delta_uu", defval=1.0, lb=0.0, ub=2.0);

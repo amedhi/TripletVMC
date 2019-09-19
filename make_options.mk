@@ -3,7 +3,7 @@ PROJECT_ROOT=/Users/amedhi/Projects/Codes/TripletVMC
 
 #-------------------------------------------------------------
 # need mpi version
-#MPI=HAVE_BOOST_MPI
+MPI=HAVE_BOOST_MPI
 
 #-------------------------------------------------------------
 # 1. Set compiler option
