@@ -40,6 +40,7 @@ public:
   int compute(const lattice::LatticeGraph& graph, const var::parm_vector& pvector,
     const unsigned& start_pos, const bool& psi_gradient=false);
   //int compute_gradients(const lattice::LatticeGraph& graph);
+  const int& num_particles(void) const { return groundstate_->num_spins(); }
   const int& num_upspins(void) const { return groundstate_->num_upspins(); }
   const int& num_dnspins(void) const { return groundstate_->num_dnspins(); }
   const double& hole_doping(void) const { return groundstate_->hole_doping(); }

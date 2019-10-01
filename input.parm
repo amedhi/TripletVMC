@@ -6,16 +6,17 @@
 # Job Specification 
 #---------------------------------------------
 job = "VMC Simulation" 
-optimizing_run = "NO" 
+optimizing_run = "YES" 
 mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
+prefix = "hubbard"
 
 #---------------------------------------------
 # Lattice:
 #---------------------------------------------
 lattice = "SQUARE" 
-lsize1 = 4
-lsize2 = 4
+lsize1 = 6
+lsize2 = 6
 bc1 = "periodic"
 bc2 = "antiperiodic"
 
@@ -36,6 +37,7 @@ gfactor = 1.0 # 0.3037
 delta_sc = 1.0 # 0.38  # 0.08
 mu = -0.4263  # -0.89 
 mu_variational = "YES"
+as_func_of = "hole_doping"
 
 #---------------------------------------------
 # List of observable to calculate:
@@ -47,7 +49,7 @@ Magnetization = "No"
 #---------------------------------------------
 # Monte Carlo parameters
 #---------------------------------------------
-rng_seed = 0  # (=0 No seed, >0 time_seed)
+rng_seed = 1  # (=0 No seed, >0 time_seed)
 measure_steps = 5000
 warmup_steps = 5000
 min_interval = 3
@@ -56,11 +58,12 @@ max_interval = 20
 #---------------------------------------------
 # Optimization parameters
 #---------------------------------------------
-num_opt_samples = 3
-sr_max_iter = 500
+sr_progress_stdout = "YES"
+sr_progress_log = "YES"
+sr_measure_steps = 1000
+sr_max_iter = 200
+sr_flat_tail_len = 20
 sr_start_tstep = 0.08
-sr_series_len = 50
-sr_fluctuation_tol = 0.35
 
 
 

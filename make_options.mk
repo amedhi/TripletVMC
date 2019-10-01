@@ -3,7 +3,7 @@ PROJECT_ROOT=/Users/amedhi/Projects/Codes/TripletVMC
 
 #-------------------------------------------------------------
 # need mpi version
-MPI=HAVE_BOOST_MPI
+#MPI=HAVE_BOOST_MPI
 
 #-------------------------------------------------------------
 # 1. Set compiler option
@@ -36,7 +36,10 @@ EIGEN_INCLUDE=-I/usr/local/include
 
 # Boost MPI library
 ifeq ($(MPI), HAVE_BOOST_MPI)
-BOOST_LIBS=-lboost_mpi -lboost_serialization
+BOOST_LIBS=-lboost_filesystem -lboost_system -lboost_mpi -lboost_serialization
+BOOST_LDFLAGS=-L/usr/local/lib
+else 
+BOOST_LIBS=-lboost_filesystem -lboost_system
 BOOST_LDFLAGS=-L/usr/local/lib
 endif
 
@@ -45,18 +48,21 @@ MKL_INCLUDE=-I/opt/intel/mkl/include/intel64/lp64
 MKL_LDFLAGS=-L/opt/intel/mkl/lib
 MKL_LIBS=-lmkl_blas95_lp64 -lmkl_lapack95_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 
+#NLOPT_INCLUDE=-I/Users/amedhi/projects/Codes/vmc++/libs/include
+#NLOPT_LDFLAGS=-L/Users/amedhi/projects/Codes/vmc++/libs/lib
+#NLOPT_LIBS=-lnlopt
+
 INCLUDE = $(BOOST_INCLUDE) #$(MKL_INCLUDE)
 ifneq ($(BOOST_INCLUDE), $(EIGEN_INCLUDE))
 INCLUDE += $(EIGEN_INCLUDE)
 endif
 
-# expression parser lib
 #ifeq ($(EIGEN_USE_MKL), USE_INTEL_MKL_ALL)
 #INCLUDE += $(MKL_INCLUDE)
 #endif
 VMC_CXXFLAGS=$(VMC_CPPFLAGS) $(VMC_OPTFLAGS) $(INCLUDE) #$(NLOPT_INCLUDE)
 VMC_LDFLAGS=$(BOOST_LDFLAGS) #$(NLOPT_LDFLAGS)  #$(MKL_LDFLAGS)
-VMC_LIBS=$(BOOST_LIBS) #$(MKL_LIBS)
+VMC_LIBS=$(BOOST_LIBS) #$(NLOPT_LIBS)  #$(MKL_LIBS)
 #ifeq ($(EIGEN_USE_MKL), USE_INTEL_MKL_ALL)
 #VMC_CXXBFLAGS += -D$(EIGEN_USE_MKL)
 #VMC_BLDFLAGS += $(MKL_LDFLAGS)
@@ -64,9 +70,13 @@ VMC_LIBS=$(BOOST_LIBS) #$(MKL_LIBS)
 #endif
 
 #-------------------------------------------------------------
-# 4. Where build directory & the includes
+# 4. Where to put the 'cmc' library & the includes
 PREFIX=$(PROJECT_ROOT)
 BUILD_DIR=$(PREFIX)/build
 VMC_LIBDIR=$(PREFIX)/lib
 VMC_INCLUDE=$(PREFIX)/include
+#VMC_CXXFLAGS= $(VMC_OPTFLAGS) $(INCLUDE) -I$(VMC_INCLUDE)
+#VMC_LDFLAGS=$(BOOST_LDFLAGS) -L$(VMC_LIBDIR)
+#VMC_LIBS=$(BOOST_LIBS) -lvmc++
+
 #-------------------------------------------------------------

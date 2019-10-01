@@ -25,28 +25,30 @@ using scalardata_t = Eigen::Array<double,1,1>;
 class DataBin 
 {
 public:
-  DataBin(const unsigned& size=1);
+  DataBin(const int& size=1, const bool& no_error_bar=false);
   ~DataBin() {}
   void clear(void);
-  void resize(const unsigned& size);
+  void resize(const int& size);
   bool add_sample(const data_t& sample);
   bool has_samples(void) const { return (num_samples_ > 0); }
   bool has_carry_over(void) const { return !waiting_sample_exist_; }
-  const unsigned& num_samples(void) const { return num_samples_; }
+  const int& size(void) const { return size_; }
+  const int& num_samples(void) const { return num_samples_; }
   const data_t& carry(void) const { return carry_; } 
   bool have_new_samples(void) const { return num_samples_!=num_samples_last_; }
   void finalize(void) const;
   const data_t& mean(void) const { finalize(); return mean_; }
   const data_t& stddev(void) const { finalize(); return stddev_; }
 private:
-  unsigned size_;
-  unsigned num_samples_{0};
-  mutable unsigned num_samples_last_{0};
+  int size_;
+  int num_samples_{0};
+  mutable int num_samples_last_{0};
   data_t ssum_;
   data_t sumsq_;
   data_t carry_;
   data_t waiting_sample_;
   bool waiting_sample_exist_{false};
+  bool no_error_bar_{false};
   data_t MinusOne_;
   mutable data_t mean_;
   mutable data_t stddev_;
@@ -57,16 +59,19 @@ class MC_Data : private std::vector<DataBin>
 {
 public:
   MC_Data() {}
-  MC_Data(const std::string& name, const unsigned& size=1) { init(name,size); }
+  MC_Data(const std::string& name, const int& size=1, 
+    const bool& no_error_bar=false) { init(name,size,no_error_bar); }
   ~MC_Data() {}
-  virtual void init(const std::string& name, const unsigned& size=1);
-  virtual void resize(const unsigned& size);
+  virtual void init(const std::string& name, const int& size=1, 
+    const bool& no_error_bar=false);
+  virtual void resize(const int& size);
+  void error_bar_off(void);
   void clear(void);
   void add_sample(const data_t& sample);
   void add_sample(const double& sample);
   void operator<<(const data_t& sample);
   void operator<<(const double& sample);
-  const unsigned& num_samples(void) const { return top_bin->num_samples(); }
+  const int& num_samples(void) const { return top_bin->num_samples(); }
   void finalize(void) const;
   const std::string& name(void) const { return name_; }
   unsigned size(void) const { return mean_.size(); }
@@ -85,11 +90,11 @@ public:
   friend std::ostream& operator<<(std::ostream& os, const MC_Data& obs);
 private:
   std::string name_;
-  static const unsigned max_binlevel_default_ = 20;
-  static const unsigned good_sample_size_ = 30;
+  int max_binlevel_default_ = 20;
+  static const int good_sample_size_ = 30;
   std::vector<DataBin>::iterator top_bin;
   std::vector<DataBin>::iterator end_bin;
-  mutable unsigned dcorr_level_;
+  mutable int dcorr_level_;
   mutable data_t mean_;
   mutable data_t stddev_;
   mutable double tau_;

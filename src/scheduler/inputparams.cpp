@@ -10,6 +10,7 @@
 // File: inputparams.cc
 
 #include <fstream>
+#include <chrono>
 #include <ctime>
 #include <unistd.h> 
 #include <pwd.h>

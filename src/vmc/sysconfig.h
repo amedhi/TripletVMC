@@ -36,13 +36,14 @@ public:
     const bool& need_psi_grad=false);
   RandomGenerator& rng(void) const { return basis_.rng(); }
   std::string signature_str(void) const { return wf_.signature_str(); } 
+  int num_particles(void) const { return wf_.num_particles(); } 
+  const double& hole_doping(void) const { return wf_.hole_doping(); }
   const int& num_varparms(void) const { return num_varparms_; } 
   const var::parm_vector& vparm_values(void);
   const std::vector<double>& vparm_vector(void); 
   const std::vector<std::string>& varp_names(void) const { return vparm_names_; }
   const var::parm_vector& vparm_lbound(void) const { return vparm_lbound_; } 
   const var::parm_vector& vparm_ubound(void) const { return vparm_ubound_; } 
-  const double& hole_doping(void) const { return wf_.hole_doping(); }
   int update_state(void);
   double accept_ratio(void);
   void reset_accept_ratio(void);

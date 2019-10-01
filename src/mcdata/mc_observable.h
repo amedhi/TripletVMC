@@ -25,12 +25,14 @@ public:
   using data_t = mcdata::data_t;
   using scalar_t = mcdata::scalardata_t;
   MC_Observable();
-  MC_Observable(const std::string& name, const unsigned& size=1, const bool& replace_mode=true);
+  MC_Observable(const std::string& name, const int& size=1, const bool& no_error_bar=false,
+    const bool& replace_mode=true);
   ~MC_Observable() {}
-  void init(const std::string& name, const unsigned& size=1) override; 
-  void resize(const unsigned& size) override;
-  void resize(const unsigned& size, const std::vector<std::string>& elem_names);
-  void set_file_mode(const bool& replace_mode) { replace_mode_=replace_mode; }
+  void init(const std::string& name, const int& size=1, const bool& no_error_bar=false) override; 
+  void set_ofstream(const std::string& prefix);
+  void resize(const int& size) override;
+  void resize(const int& size, const std::vector<std::string>& elem_names);
+  void set_replace_mode(const bool& replace_mode) { replace_mode_=replace_mode; }
   void save_result(void);
   void set_have_total(void) { have_total_=true; }
   virtual void reset(void) { MC_Data::clear(); }

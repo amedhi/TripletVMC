@@ -16,6 +16,7 @@
 #include "./sysconfig.h"
 #include "./energy.h"
 #include "./sccorr.h"
+#include "./particle.h"
 
 namespace vmc {
 
@@ -29,7 +30,7 @@ public:
   //  void (&print_copyright)(std::ostream& os), const lattice::LatticeGraph& graph, 
   //  const model::Hamiltonian& model, const SysConfig& config);
   void init(const input::Parameters& inputs, const lattice::LatticeGraph& graph, 
-    const model::Hamiltonian& model, const SysConfig& config);
+    const model::Hamiltonian& model, const SysConfig& config, const std::string& prefix);
   void as_functions_of(const std::vector<std::string>& xvars=std::vector<std::string>());
   void as_functions_of(const std::string& xvar);
   void switch_off(void);
@@ -40,6 +41,7 @@ public:
   inline EnergyGradient& energy_grad(void) { return energy_grad_; }
   inline SC_Correlation& sc_corr(void) { return sc_corr_; }
   inline SR_Matrix& sr_matrix(void) { return sr_matrix_; }
+  inline SiteOccupancy& site_occupancy(void) { return site_occupancy_; }
   void finalize(void);
   void print_heading(void);
   void print_results(const std::vector<double>& xvals=std::vector<double>()); 
@@ -53,6 +55,7 @@ private:
   EnergyGradient energy_grad_;
   SC_Correlation sc_corr_;
   SR_Matrix sr_matrix_;
+  SiteOccupancy site_occupancy_;
 };
 
 

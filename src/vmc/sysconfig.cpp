@@ -17,6 +17,9 @@ SysConfig::SysConfig(const input::Parameters& inputs,
   , pj_(inputs)
   , num_sites_(graph.num_sites())
 {
+  num_upspins_ = wf_.num_upspins();
+  num_dnspins_ = wf_.num_dnspins();
+  num_spins_ = num_upspins_ + num_dnspins_;
   // variational parameters
   num_pj_parms_ = pj_.varparms().size();
   num_wf_parms_ = wf_.varparms().size();

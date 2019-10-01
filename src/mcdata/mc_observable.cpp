@@ -18,16 +18,16 @@ MC_Observable::MC_Observable()
   avg_tau_ = 0.0;
 }
 
-MC_Observable::MC_Observable(const std::string& name, const unsigned& size,
-  const bool& replace_mode) 
+MC_Observable::MC_Observable(const std::string& name, const int& size,
+  const bool& no_error_bar, const bool& replace_mode) 
 {
-  this->init(name,size);
+  this->init(name,size,no_error_bar);
   replace_mode_ = replace_mode;
 } 
 
-void MC_Observable::init(const std::string& name, const unsigned& size)
+void MC_Observable::init(const std::string& name, const int& size, const bool& no_error_bar)
 {
-  MC_Data::init(name, size);
+  MC_Data::init(name,size,no_error_bar);
   name_ = name;
   num_dataset_=0;
   avg_mcdata_.init(name, size);
@@ -35,7 +35,7 @@ void MC_Observable::init(const std::string& name, const unsigned& size)
   avg_tau_ = 0.0;
   //elem_names_ = {name};
   elem_names_.resize(size);
-  // file name
+  // default file name
   fname_ = name_;
   boost::to_lower(fname_);
   auto pos = fname_.find('^');
@@ -43,7 +43,17 @@ void MC_Observable::init(const std::string& name, const unsigned& size)
   fname_ = "res_"+fname_+".txt";
 }
 
-void MC_Observable::resize(const unsigned& size)
+void MC_Observable::set_ofstream(const std::string& prefix)
+{
+  // file name
+  fname_ = name_;
+  boost::to_lower(fname_);
+  auto pos = fname_.find('^');
+  if (pos != std::string::npos) fname_.erase(pos,1);
+  fname_ = prefix+"res_"+fname_+".txt";
+}
+
+void MC_Observable::resize(const int& size)
 {
   MC_Data::resize(size);
   avg_mcdata_.resize(size);
@@ -52,7 +62,7 @@ void MC_Observable::resize(const unsigned& size)
     elem_names_[i] = "elem" + std::to_string(i);
 }
 
-void MC_Observable::resize(const unsigned& size, const std::vector<std::string>& elem_names)
+void MC_Observable::resize(const int& size, const std::vector<std::string>& elem_names)
 {
   MC_Data::resize(size);
   avg_mcdata_.resize(size);
@@ -79,7 +89,7 @@ void MC_Observable::print_heading(const std::string& header,
   fs_ << "# ";
   fs_ << std::left;
   //fs_ << std::setw(14)<<xvar_name;
-  for (const auto& p : xvars) fs_ << std::setw(14)<<p.substr(0,14);
+  for (const auto& p : xvars) fs_ << std::setw(15)<<p.substr(0,15);
   // total value
   if (MC_Data::size()>1 && have_total_)
     fs_ << std::setw(14)<<"Total"<<std::setw(11)<<"err";
@@ -106,7 +116,7 @@ void MC_Observable::print_result(const std::vector<double>& xpvals)
   //if (MC_Data::size()>1)
   if (MC_Data::size()>1 && have_total_)
     fs_ << MC_Data::result_str(-1); 
-  for (unsigned i=0; i<MC_Data::size(); ++i) 
+  for (int i=0; i<MC_Data::size(); ++i) 
     fs_ << MC_Data::result_str(i); 
   fs_ << MC_Data::conv_str(0); //.substr(0,10); 
   fs_ << std::endl;

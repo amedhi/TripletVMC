@@ -9,10 +9,11 @@
 
 namespace mcdata {
 
-DataBin::DataBin(const unsigned& size) 
+DataBin::DataBin(const int& size, const bool& error_bar) 
 {
   resize(size);
   clear();
+  no_error_bar_ = error_bar;
 }
 
 void DataBin::clear(void) 
@@ -29,7 +30,7 @@ void DataBin::clear(void)
   stddev_.setZero();
 }
 
-void DataBin::resize(const unsigned& size) 
+void DataBin::resize(const int& size) 
 {
   size_ = size;
   ssum_.resize(size);
@@ -46,6 +47,7 @@ bool DataBin::add_sample(const data_t& new_sample)
 {
   num_samples_++;
   ssum_ += new_sample;
+  if (no_error_bar_) return false;
   sumsq_ += new_sample * new_sample;
   if (waiting_sample_exist_) {
     carry_ = (waiting_sample_ + new_sample)*0.5;
@@ -64,9 +66,16 @@ void DataBin::finalize(void) const
     num_samples_last_ = num_samples_;
     if (num_samples_ > 1) {
       mean_ = ssum_/num_samples_;
-      data_t variance_ = sumsq_/num_samples_ - mean_ * mean_;
-      stddev_ = variance_/(num_samples_-1);
-      stddev_ = stddev_.sqrt();
+      if (no_error_bar_) {
+        stddev_.setZero();
+      }
+      else {
+        data_t variance_ = sumsq_/num_samples_ - mean_ * mean_;
+        stddev_ = variance_/(num_samples_-1);
+        // 'variance_' can sometime become slightly negative 
+        // due to round-off errors - hence abs()
+        stddev_ = stddev_.abs().sqrt(); 
+      }
     }
     else {
       mean_ = ssum_;
@@ -76,20 +85,32 @@ void DataBin::finalize(void) const
 }
 
 /*----------------------MC_Data class------------------*/
-void MC_Data::init(const std::string& name, const unsigned& size) 
+void MC_Data::init(const std::string& name, const int& size, const bool& no_error_bar) 
 {
   std::vector<DataBin>::clear();
-  for (unsigned i=0; i<max_binlevel_default_; ++i) 
-    this->push_back(DataBin(size));
+  if (no_error_bar) max_binlevel_default_ = 1;
+  for (int i=0; i<max_binlevel_default_; ++i) 
+    this->push_back(DataBin(size,no_error_bar));
   top_bin = this->begin();
   end_bin = this->end();
   name_ = name;
   this->clear();
 }
 
-void MC_Data::resize(const unsigned& size) 
+void MC_Data::resize(const int& size) 
 {
   for (auto& bin : *this) bin.resize(size);
+  this->clear();
+}
+
+void MC_Data::error_bar_off(void) 
+{
+  max_binlevel_default_ = 1;
+  int size = this->begin()->size();
+  std::vector<DataBin>::clear();
+  this->push_back(DataBin(size,true));
+  top_bin = this->begin();
+  end_bin = this->end();
   this->clear();
 }
 
@@ -107,13 +128,16 @@ void MC_Data::clear(void)
 
 void MC_Data::add_sample(const data_t& sample)
 {
-  auto this_bin = top_bin;  
-  data_t new_sample(sample);
-  while (this_bin->add_sample(new_sample)) {
-    new_sample = this_bin->carry();
-    //if (this_bin++ == end_bin) break; // wrong logic?
-    if (++this_bin == end_bin) break;
+  if (max_binlevel_default_>1) {
+    auto this_bin = top_bin;  
+    data_t new_sample(sample);
+    while (this_bin->add_sample(new_sample)) {
+      new_sample = this_bin->carry();
+      //if (this_bin++ == end_bin) break; // wrong logic?
+      if (++this_bin == end_bin) break;
+    }
   }
+  else top_bin->add_sample(sample); 
 }
 
 void MC_Data::add_sample(const double& sample)

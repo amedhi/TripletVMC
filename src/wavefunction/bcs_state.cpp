@@ -34,7 +34,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
   varparms_.clear();
   mf_model_.init(graph.lattice());
   std::string name;
-  double defval, lb, ub;
+  double defval, lb, ub, dh;
   using namespace model;
   model::CouplingConstant cc;
   if (order_type_==bcs::swave) {
@@ -85,6 +85,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
       mf_model_.add_parameter(name="delta_uu", defval=0.0, inputs);
       mf_model_.add_parameter(name="delta_ud", defval=0.0, inputs);
       mf_model_.add_parameter(name="delta_dd", defval=0.0, inputs);
+      mf_model_.add_parameter(name="delta_fm", defval=0.0, inputs);
       mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
       mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
       // pairing term
@@ -98,10 +99,19 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
       mf_model_.add_bondterm(name="pairing", cc, op::create_triplet_ud());
       cc = CouplingConstant({0,"delta_dd"}, {1,"i*theta*delta_dd"}, {2,"i*theta2*delta_dd"});
       mf_model_.add_bondterm(name="pairing", cc, op::create_triplet_dd());
+      // FM term
+      mf_model_.add_siteterm(name="fm_field", cc="-delta_fm", op::ni_up());
+      mf_model_.add_siteterm(name="fm_field", cc="delta_fm", op::ni_dn());
+
       // variational parameters
-      varparms_.add("delta_uu", defval=1.0, lb=0.0, ub=2.0);
-      varparms_.add("delta_ud", defval=1.0, lb=0.0, ub=2.0);
-      varparms_.add("delta_dd", defval=1.0, lb=0.0, ub=2.0);
+      defval = mf_model_.get_parameter_value("delta_uu");
+      varparms_.add("delta_uu",defval,lb=0.0,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("delta_ud");
+      varparms_.add("delta_ud",defval,lb=0.0,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("delta_dd");
+      varparms_.add("delta_dd",defval,lb=0.0,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("delta_fm");
+      varparms_.add("delta_fm",defval,lb=0.0,ub=2.0,dh=0.01);
     }
     else {
       throw std::range_error("BCS_State::BCS_State: not defined for this lattice");
@@ -115,8 +125,8 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
   mf_model_.add_parameter(name="mu", defval=0.0, inputs, info);
   if (info == 0) noninteracting_mu_ = false;
   else noninteracting_mu_ = true;
-  if (inputs.set_value("mu_variational", false, info)) 
-    varparms_.add("mu", defval=0.0, -2.0, +1.0);
+  if (inputs.set_value("mu_variational",false,info)) 
+    varparms_.add("mu",defval=0.0,lb=-2.0,ub=2.0,dh=0.1);
   // finalize MF Hamiltonian
   mf_model_.finalize(graph);
   num_varparms_ = varparms_.size();
